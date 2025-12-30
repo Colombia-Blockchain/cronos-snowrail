@@ -73,6 +73,23 @@ function saveDeploymentRecord(record: DeploymentRecord): void {
 }
 
 /**
+ * Validate executor address format
+ */
+function validateExecutorAddress(address: string): void {
+  if (!address) {
+    throw new Error(
+      "EXECUTOR_ADDRESS environment variable not set. This should be the backend wallet address (Agent wallet) that will sign settlement intents."
+    );
+  }
+
+  if (!address.startsWith("0x") || address.length !== 42 || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
+    throw new Error(
+      `Invalid EXECUTOR_ADDRESS format: ${address}. Must be a valid Ethereum address (0x followed by 40 hex characters)`
+    );
+  }
+}
+
+/**
  * Deploy Settlement contract
  */
 async function deploySettlement(): Promise<void> {
@@ -98,11 +115,16 @@ async function deploySettlement(): Promise<void> {
     );
   }
 
+  // Load and validate executor address
+  const executorAddress = process.env.EXECUTOR_ADDRESS;
+  validateExecutorAddress(executorAddress || "");
+  console.log(`Executor address (backend wallet): ${executorAddress}\n`);
+
   try {
     // Deploy Settlement contract
     console.log("Deploying Settlement...");
     const Settlement = await ethers.getContractFactory("Settlement");
-    const settlement = await Settlement.deploy();
+    const settlement = await Settlement.deploy(executorAddress);
 
     // Wait for deployment
     const deploymentTx = settlement.deploymentTransaction();
@@ -119,7 +141,8 @@ async function deploySettlement(): Promise<void> {
     console.log(`\nSettlement deployed successfully!`);
     console.log(`Address: ${address}`);
     console.log(`Block: ${deploymentBlock}`);
-    console.log(`Tx: ${deploymentTx.hash}\n`);
+    console.log(`Tx: ${deploymentTx.hash}`);
+    console.log(`Executor: ${executorAddress}\n`);
 
     // Load and update deployment record
     const record = loadDeploymentRecord();
@@ -129,7 +152,7 @@ async function deploySettlement(): Promise<void> {
       deploymentBlock,
       deployedAt: new Date().toISOString(),
       deployer: deployer.address,
-      constructorArgs: [],
+      constructorArgs: [executorAddress],
     };
 
     saveDeploymentRecord(record);
@@ -145,7 +168,10 @@ async function deploySettlement(): Promise<void> {
       `1. View on block explorer: ${networkExplorer}/address/${address}`
     );
     console.log(
-      `2. Verify contract: npm run verify:${network.name === "cronosTestnet" ? "testnet" : "mainnet"} -- ${address} --constructor-args '[]'`
+      `2. Verify contract: npm run verify:${network.name === "cronosTestnet" ? "testnet" : "mainnet"} -- ${address} --constructor-args scripts/constructor-args.js`
+    );
+    console.log(
+      `3. Update backend .env: SETTLEMENT_CONTRACT_ADDRESS=${address}`
     );
     console.log("");
   } catch (error) {
