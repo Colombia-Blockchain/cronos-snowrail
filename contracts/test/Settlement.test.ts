@@ -1,19 +1,28 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import type { Settlement } from "../typechain-types/Settlement";
-import { loadTestSigners, TestFixture } from "./fixtures";
+import { loadTestSigners, TestFixture, signSettlement } from "./fixtures";
 
 describe("Settlement Contract", function () {
   let settlement: Settlement;
   let signers: TestFixture;
+  let executor: any;
+  let contractAddress: string;
+  let chainId: number;
 
   beforeEach(async function () {
     signers = await loadTestSigners();
+    executor = signers.addr1;
 
     const SettlementFactory = await ethers.getContractFactory("Settlement");
-    const deployed = await SettlementFactory.deploy();
+    const deployed = await SettlementFactory.deploy(executor.address);
     await deployed.waitForDeployment();
     settlement = deployed as unknown as Settlement;
+    contractAddress = settlement.target as string;
+
+    // Get chain ID
+    const network = await ethers.provider.getNetwork();
+    chainId = Number(network.chainId);
   });
 
   describe("Deployment", function () {
@@ -24,6 +33,10 @@ describe("Settlement Contract", function () {
     it("Should have zero balance initially", async function () {
       const balance = await ethers.provider.getBalance(settlement.target);
       expect(balance).to.equal(0);
+    });
+
+    it("Should set the executor address", async function () {
+      expect(await settlement.executor()).to.equal(executor.address);
     });
   });
 
@@ -92,11 +105,22 @@ describe("Settlement Contract", function () {
         const recipient = signers.addr2.address;
         const amount = ethers.parseEther("1.0");
         const intentHash = ethers.keccak256(ethers.toUtf8Bytes("test-intent-1"));
+        const nonce = 0n;
 
         const initialBalance = await ethers.provider.getBalance(recipient);
 
+        const signature = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          intentHash,
+          recipient,
+          amount,
+          nonce
+        );
+
         await expect(
-          settlement.executeSettlement(intentHash, recipient, amount)
+          settlement.executeSettlement(intentHash, recipient, amount, nonce, signature)
         )
           .to.emit(settlement, "PaymentExecuted")
           .withArgs(intentHash, recipient, amount);
@@ -109,9 +133,20 @@ describe("Settlement Contract", function () {
         const recipient = signers.addr2.address;
         const amount = depositAmount; // Transfer entire balance
         const intentHash = ethers.keccak256(ethers.toUtf8Bytes("test-intent-exact"));
+        const nonce = 0n;
+
+        const signature = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          intentHash,
+          recipient,
+          amount,
+          nonce
+        );
 
         await expect(
-          settlement.executeSettlement(intentHash, recipient, amount)
+          settlement.executeSettlement(intentHash, recipient, amount, nonce, signature)
         )
           .to.emit(settlement, "PaymentExecuted")
           .withArgs(intentHash, recipient, amount);
@@ -129,13 +164,33 @@ describe("Settlement Contract", function () {
         const hash2 = ethers.keccak256(ethers.toUtf8Bytes("intent-2"));
 
         // First settlement
+        const sig1 = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          hash1,
+          recipient1,
+          amount,
+          0n
+        );
+
         await expect(
-          settlement.executeSettlement(hash1, recipient1, amount)
+          settlement.executeSettlement(hash1, recipient1, amount, 0, sig1)
         ).to.emit(settlement, "PaymentExecuted");
 
         // Second settlement
+        const sig2 = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          hash2,
+          recipient2,
+          amount,
+          0n
+        );
+
         await expect(
-          settlement.executeSettlement(hash2, recipient2, amount)
+          settlement.executeSettlement(hash2, recipient2, amount, 0, sig2)
         ).to.emit(settlement, "PaymentExecuted");
 
         const finalBalance = await ethers.provider.getBalance(settlement.target);
@@ -144,26 +199,37 @@ describe("Settlement Contract", function () {
     });
 
     describe("Authorization", function () {
-      it("Should reject non-owner executing settlement", async function () {
+      it("Should reject signature from non-executor", async function () {
         const recipient = signers.addr2.address;
         const amount = ethers.parseEther("1.0");
         const intentHash = ethers.keccak256(ethers.toUtf8Bytes("unauthorized"));
+        const nonce = 0n;
 
-        // Try to execute as non-owner
+        // Sign with owner (not executor)
+        const signature = await signSettlement(
+          signers.owner,
+          contractAddress,
+          chainId,
+          intentHash,
+          recipient,
+          amount,
+          nonce
+        );
+
         await expect(
-          settlement.connect(signers.addr1).executeSettlement(intentHash, recipient, amount)
-        ).to.be.revertedWithCustomError(settlement, "Unauthorized");
+          settlement.executeSettlement(intentHash, recipient, amount, nonce, signature)
+        ).to.be.revertedWithCustomError(settlement, "InvalidSigner");
       });
 
-      it("Should include caller address in Unauthorized error", async function () {
+      it("Should reject settlement without valid signature", async function () {
         const recipient = signers.addr2.address;
         const amount = ethers.parseEther("1.0");
-        const intentHash = ethers.keccak256(ethers.toUtf8Bytes("unauthorized-error"));
+        const intentHash = ethers.keccak256(ethers.toUtf8Bytes("invalid-sig"));
+        const nonce = 0n;
 
-        // Error should include the unauthorized caller's address
         await expect(
-          settlement.connect(signers.addr1).executeSettlement(intentHash, recipient, amount)
-        ).to.be.revertedWithCustomError(settlement, "Unauthorized");
+          settlement.executeSettlement(intentHash, recipient, amount, nonce, "0x00")
+        ).to.be.reverted;
       });
     });
 
@@ -172,28 +238,50 @@ describe("Settlement Contract", function () {
         const recipient = signers.addr2.address;
         const amount = ethers.parseEther("1.0");
         const intentHash = ethers.keccak256(ethers.toUtf8Bytes("replay-test"));
+        const nonce = 0n;
+
+        const signature = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          intentHash,
+          recipient,
+          amount,
+          nonce
+        );
 
         // First execution should succeed
         await expect(
-          settlement.executeSettlement(intentHash, recipient, amount)
+          settlement.executeSettlement(intentHash, recipient, amount, nonce, signature)
         ).to.emit(settlement, "PaymentExecuted");
 
         // Second execution with same intentHash should fail
         await expect(
-          settlement.executeSettlement(intentHash, recipient, amount)
-        ).to.be.revertedWithCustomError(settlement, "IntentAlreadyExecuted");
+          settlement.executeSettlement(intentHash, recipient, amount, nonce, signature)
+        ).to.be.revertedWithCustomError(settlement, "InvalidNonce");
       });
 
       it("Should track executed intents in mapping", async function () {
         const recipient = signers.addr2.address;
         const amount = ethers.parseEther("1.0");
         const intentHash = ethers.keccak256(ethers.toUtf8Bytes("mapping-test"));
+        const nonce = 0n;
 
         // Intent should not be executed initially
         expect(await settlement.isIntentExecuted(intentHash)).to.equal(false);
 
+        const signature = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          intentHash,
+          recipient,
+          amount,
+          nonce
+        );
+
         // Execute settlement
-        await settlement.executeSettlement(intentHash, recipient, amount);
+        await settlement.executeSettlement(intentHash, recipient, amount, nonce, signature);
 
         // Intent should now be marked as executed
         expect(await settlement.isIntentExecuted(intentHash)).to.equal(true);
@@ -205,13 +293,33 @@ describe("Settlement Contract", function () {
         const hash1 = ethers.keccak256(ethers.toUtf8Bytes("intent-different-1"));
         const hash2 = ethers.keccak256(ethers.toUtf8Bytes("intent-different-2"));
 
+        const sig1 = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          hash1,
+          recipient,
+          amount,
+          0n
+        );
+
+        const sig2 = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          hash2,
+          recipient,
+          amount,
+          0n
+        );
+
         // Both intents should execute successfully (different hashes)
         await expect(
-          settlement.executeSettlement(hash1, recipient, amount)
+          settlement.executeSettlement(hash1, recipient, amount, 0, sig1)
         ).to.emit(settlement, "PaymentExecuted");
 
         await expect(
-          settlement.executeSettlement(hash2, recipient, amount)
+          settlement.executeSettlement(hash2, recipient, amount, 0, sig2)
         ).to.emit(settlement, "PaymentExecuted");
       });
     });
@@ -220,18 +328,40 @@ describe("Settlement Contract", function () {
       it("Should reject zero recipient address", async function () {
         const intentHash = ethers.keccak256(ethers.toUtf8Bytes("zero-addr"));
         const amount = ethers.parseEther("1.0");
+        const nonce = 0n;
+
+        const signature = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          intentHash,
+          ethers.ZeroAddress,
+          amount,
+          nonce
+        );
 
         await expect(
-          settlement.executeSettlement(intentHash, ethers.ZeroAddress, amount)
+          settlement.executeSettlement(intentHash, ethers.ZeroAddress, amount, nonce, signature)
         ).to.be.revertedWithCustomError(settlement, "ZeroAddress");
       });
 
       it("Should reject zero amount", async function () {
         const recipient = signers.addr2.address;
         const intentHash = ethers.keccak256(ethers.toUtf8Bytes("zero-amount"));
+        const nonce = 0n;
+
+        const signature = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          intentHash,
+          recipient,
+          0n,
+          nonce
+        );
 
         await expect(
-          settlement.executeSettlement(intentHash, recipient, 0)
+          settlement.executeSettlement(intentHash, recipient, 0, nonce, signature)
         ).to.be.revertedWithCustomError(settlement, "ZeroAmount");
       });
     });
@@ -241,9 +371,20 @@ describe("Settlement Contract", function () {
         const recipient = signers.addr2.address;
         const amount = ethers.parseEther("20.0"); // More than available 10 ETH
         const intentHash = ethers.keccak256(ethers.toUtf8Bytes("insufficient"));
+        const nonce = 0n;
+
+        const signature = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          intentHash,
+          recipient,
+          amount,
+          nonce
+        );
 
         await expect(
-          settlement.executeSettlement(intentHash, recipient, amount)
+          settlement.executeSettlement(intentHash, recipient, amount, nonce, signature)
         ).to.be.revertedWithCustomError(settlement, "InsufficientBalance");
       });
 
@@ -251,9 +392,20 @@ describe("Settlement Contract", function () {
         const recipient = signers.addr2.address;
         const amount = ethers.parseEther("20.0");
         const intentHash = ethers.keccak256(ethers.toUtf8Bytes("insufficient-error"));
+        const nonce = 0n;
+
+        const signature = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          intentHash,
+          recipient,
+          amount,
+          nonce
+        );
 
         await expect(
-          settlement.executeSettlement(intentHash, recipient, amount)
+          settlement.executeSettlement(intentHash, recipient, amount, nonce, signature)
         ).to.be.revertedWithCustomError(settlement, "InsufficientBalance");
       });
     });
@@ -267,10 +419,27 @@ describe("Settlement Contract", function () {
 
         const amount = ethers.parseEther("1.0");
         const intentHash = ethers.keccak256(ethers.toUtf8Bytes("transfer-fail"));
+        const nonce = 0n;
+
+        const signature = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          intentHash,
+          rejectingContract.target as string,
+          amount,
+          nonce
+        );
 
         // Attempt to send to rejecting contract should fail
         await expect(
-          settlement.executeSettlement(intentHash, rejectingContract.target, amount)
+          settlement.executeSettlement(
+            intentHash,
+            rejectingContract.target as string,
+            amount,
+            nonce,
+            signature
+          )
         ).to.be.revertedWithCustomError(settlement, "TransferFailed");
 
         // Intent should NOT be marked as executed
@@ -284,16 +453,43 @@ describe("Settlement Contract", function () {
 
         const amount = ethers.parseEther("1.0");
         const intentHash = ethers.keccak256(ethers.toUtf8Bytes("retry-test"));
+        const nonce = 0n;
+
+        const signature = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          intentHash,
+          rejectingContract.target as string,
+          amount,
+          nonce
+        );
 
         // First attempt fails
         await expect(
-          settlement.executeSettlement(intentHash, rejectingContract.target, amount)
+          settlement.executeSettlement(
+            intentHash,
+            rejectingContract.target as string,
+            amount,
+            nonce,
+            signature
+          )
         ).to.be.revertedWithCustomError(settlement, "TransferFailed");
 
-        // Second attempt with same hash should still work (hash not marked as executed)
+        // Second attempt with different recipient should still work
         const validRecipient = signers.addr2.address;
+        const sig2 = await signSettlement(
+          executor,
+          contractAddress,
+          chainId,
+          intentHash,
+          validRecipient,
+          amount,
+          nonce
+        );
+
         await expect(
-          settlement.executeSettlement(intentHash, validRecipient, amount)
+          settlement.executeSettlement(intentHash, validRecipient, amount, nonce, sig2)
         ).to.emit(settlement, "PaymentExecuted");
       });
     });
@@ -321,6 +517,7 @@ describe("Settlement Contract", function () {
       const intentHash = ethers.keccak256(ethers.toUtf8Bytes("status-test"));
       const recipient = signers.addr2.address;
       const amount = ethers.parseEther("1.0");
+      const nonce = 0n;
 
       // Deposit first
       await signers.owner.sendTransaction({
@@ -331,11 +528,28 @@ describe("Settlement Contract", function () {
       // Check status before execution
       expect(await settlement.isIntentExecuted(intentHash)).to.equal(false);
 
+      const signature = await signSettlement(
+        executor,
+        contractAddress,
+        chainId,
+        intentHash,
+        recipient,
+        amount,
+        nonce
+      );
+
       // Execute settlement
-      await settlement.executeSettlement(intentHash, recipient, amount);
+      await settlement.executeSettlement(intentHash, recipient, amount, nonce, signature);
 
       // Check status after execution
       expect(await settlement.isIntentExecuted(intentHash)).to.equal(true);
+    });
+
+    it("Should correctly report intent nonce", async function () {
+      const intentHash = ethers.keccak256(ethers.toUtf8Bytes("nonce-status"));
+
+      // Check initial nonce is 0
+      expect(await settlement.getIntentNonce(intentHash)).to.equal(0);
     });
   });
 });

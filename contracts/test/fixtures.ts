@@ -1,5 +1,6 @@
 import { ethers } from "hardhat";
 import type { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
+import type { TypedDataDomain, TypedDataField } from "ethers";
 
 /**
  * Test fixture interface for common test setup
@@ -58,4 +59,52 @@ export async function increaseTime(seconds: number): Promise<void> {
   await ethers.provider.send("hardhat_mine", [
     "0x" + Math.floor(seconds / 12).toString(16),
   ]);
+}
+
+/**
+ * Get EIP-712 domain for Settlement contract
+ */
+export function getSettlementDomain(
+  chainId: number,
+  verifyingContract: string
+): TypedDataDomain {
+  return {
+    name: "CronosSettlement",
+    version: "1",
+    chainId,
+    verifyingContract,
+  };
+}
+
+/**
+ * Get EIP-712 types for Settlement signatures
+ */
+export function getSettlementTypes(): Record<string, TypedDataField[]> {
+  return {
+    Settlement: [
+      { name: "intentHash", type: "bytes32" },
+      { name: "recipient", type: "address" },
+      { name: "amount", type: "uint256" },
+      { name: "nonce", type: "uint256" },
+    ],
+  };
+}
+
+/**
+ * Sign a settlement transaction using EIP-712
+ */
+export async function signSettlement(
+  signer: HardhatEthersSigner,
+  contractAddress: string,
+  chainId: number,
+  intentHash: string,
+  recipient: string,
+  amount: bigint,
+  nonce: bigint
+): Promise<string> {
+  const domain = getSettlementDomain(chainId, contractAddress);
+  const types = getSettlementTypes();
+  const value = { intentHash, recipient, amount, nonce };
+
+  return await signer.signTypedData(domain, types, value);
 }
