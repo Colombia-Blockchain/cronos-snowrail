@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "documentation": {
+      "enabled": true,
+      "policy": "explicit-request-only",
+      "description": "No crear documentación por alucinaciones. Solo generar documentación si es explícitamente solicitada.",
+      "behavior": {
+        "auto_generate": false,
+        "require_explicit_request": true,
+        "allow_readme_updates": false,
+        "allow_code_comments": true,
+        "skip_markdown_generation": true
+      }
+    }
+  },
+  "guidelines": [
+    "No generes archivos .md sin solicitud explícita",
+    "No crees README, CONTRIBUTING.md, o similar por iniciativa propia",
+    "No halucines documentación sobre features que no existen",
+    "Si se pide documentación, hazla. Si no se pide, no la hagas",
+    "Los comentarios en código son permitidos si son necesarios para claridad",
+    "Solo actualiza documentación existente si es absolutamente necesario"
+  ]
+}
