@@ -1,0 +1,42 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Node modules
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build artifacts
+artifacts/
+cache/
+dist/
+typechain-types/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Generated files
+gas-report.txt
+gas-report.json
+
+# Hardhat files
+hardhat.config.*.js
+hardhat.config.*.ts.js
+
+# Deployment records can be excluded if using external storage
+# deployments/
+
+# Temporary files
+*.tmp
+.tmp/
