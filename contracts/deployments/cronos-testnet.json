@@ -1,0 +1,18 @@
+{
+  "network": "cronosTestnet",
+  "chainId": 338,
+  "blockExplorer": "https://testnet.cronoscan.com",
+  "contracts": {
+    "Settlement": {
+      "address": "0xae6E14caD8D4f43947401fce0E4717b8D17b4382",
+      "deploymentTx": "0x50f2b9b1ca5bc192a1c99b2eb06ef49809bf7523e284cd7838bc9f1798a23e61",
+      "deploymentBlock": 65354308,
+      "deployedAt": "2025-12-30T23:25:19.070Z",
+      "deployer": "0x40C7fa08031dB321245a2f96E6064D2cF269f18B",
+      "constructorArgs": [
+        "0x40C7fa08031dB321245a2f96E6064D2cF269f18B"
+      ]
+    }
+  },
+  "deployedAt": "2025-12-30T23:25:19.070Z"
+}

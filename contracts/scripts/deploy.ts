@@ -1,7 +1,7 @@
 import { ethers, network } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
-import { config, validateNetworkConfig } from "@config/env";
+import { config, validateNetworkConfig } from "../config/env";
 
 /**
  * Deployment record structure
