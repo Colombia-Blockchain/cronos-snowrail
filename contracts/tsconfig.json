@@ -1,0 +1,49 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowSyntheticDefaultImports": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "typeRoots": ["./node_modules/@types", "../../node_modules/@types"],
+    "paths": {
+      "@contracts/*": ["./contracts/*"],
+      "@scripts/*": ["./scripts/*"],
+      "@test/*": ["./test/*"],
+      "@typechain": ["./typechain-types"],
+      "@config/*": ["./config/*"]
+    },
+    "plugins": [
+      {
+        "name": "ts-node",
+        "options": {
+          "transpileOnly": true,
+          "files": true
+        }
+      }
+    ]
+  },
+  "include": ["config/hardhat.config.ts", "scripts/**/*.ts", "test/**/*.ts", "contracts/**/*.ts"],
+  "exclude": ["node_modules", "dist", "artifacts", "cache", "typechain-types"]
+}

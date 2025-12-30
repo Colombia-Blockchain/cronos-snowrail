@@ -36,6 +36,10 @@ cache/
 typechain/
 typechain-types/
 
+# Claude Code
+.claude/
+.clauderc.json
+
 # Editor
 .vscode/*
 !.vscode/extensions.json
