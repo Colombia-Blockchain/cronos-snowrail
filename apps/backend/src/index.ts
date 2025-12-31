@@ -4,6 +4,7 @@ import helmet from '@fastify/helmet';
 import dotenv from 'dotenv';
 import { showBanner } from './utils/banner';
 import { intentRoutes } from './api/routes/intents';
+import { initializeAgentService } from './services/agent-service';
 
 dotenv.config();
 
@@ -47,6 +48,9 @@ server.register(cors, {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 });
+
+// Initialize services
+initializeAgentService(server);
 
 // Register API routes
 server.register(intentRoutes, { prefix: '/api' });
