@@ -1,5 +1,7 @@
 import { PaymentIntent, AgentDecision } from '@cronos-x402/shared-types';
 import { FastifyInstance } from 'fastify';
+import { getWalletService } from '../services/wallet-service';
+import { createIntentMessage } from '../utils/crypto';
 
 export class Orchestrator {
   constructor(private logger: FastifyInstance['log']) {}
@@ -28,17 +30,59 @@ export class Orchestrator {
       '[Orchestrator] Agent approved - proceeding with X402 execution'
     );
 
-    // TODO: Implement actual x402 execution flow (Issue #8)
-    // This would include:
-    // 1. Load wallet from secure storage
-    // 2. Sign transaction using X402 protocol
-    // 3. Broadcast to Cronos network
-    // 4. Track transaction hash
+    try {
+      // Get wallet service for signing
+      const walletService = getWalletService();
+      const walletAddress = walletService.getAddress();
 
-    const txHash = '0x_mock_tx_hash';
-    this.logger.info({ intentId: intent.intentId, txHash }, '[Orchestrator] Transaction broadcast');
+      // Create intent message with replay protection
+      const chainId = parseInt(process.env.CHAIN_ID || '43113', 10);
+      const nonce = await walletService.getNonce();
 
-    return txHash;
+      const messageText = createIntentMessage(
+        intent.intentId,
+        intent.amount,
+        intent.recipient,
+        chainId,
+        nonce
+      );
+
+      // Sign the intent message
+      const signature = await walletService.signHash(messageText);
+
+      this.logger.info(
+        {
+          intentId: intent.intentId,
+          signer: walletAddress,
+          nonce,
+          chainId,
+        },
+        '[Orchestrator] Intent signed successfully'
+      );
+
+      // TODO: Implement actual x402 execution flow (Issue #9)
+      // This would include:
+      // 1. Broadcast signed transaction to Cronos network
+      // 2. Wait for transaction confirmation
+      // 3. Track transaction hash
+      // 4. Update intent status
+
+      // Mock transaction hash for now
+      const txHash = `0x${Buffer.from(signature).toString('hex').slice(0, 64)}`;
+
+      this.logger.info(
+        { intentId: intent.intentId, txHash, signature: signature.slice(0, 20) + '...' },
+        '[Orchestrator] Transaction prepared for broadcast'
+      );
+
+      return txHash;
+    } catch (error) {
+      this.logger.error(
+        { intentId: intent.intentId, error: String(error) },
+        '[Orchestrator] Execution failed'
+      );
+      throw error;
+    }
   }
 }
 

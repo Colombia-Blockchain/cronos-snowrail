@@ -1,25 +1,30 @@
 import { PaymentIntent, IntentStatus } from "@cronos-x402/shared-types";
 import { randomUUID } from "crypto";
 
-class IntentService {
-  private intents: Map<string, PaymentIntent> = new Map();
+interface IntentWithOwner extends PaymentIntent {
+  owner?: string; // TODO: Make required in Issue #9 when auth is implemented
+}
 
-  create(intent: Omit<PaymentIntent, "intentId" | "status" | "createdAt">): PaymentIntent {
-    const newIntent: PaymentIntent = {
+class IntentService {
+  private intents: Map<string, IntentWithOwner> = new Map();
+
+  create(intent: Omit<PaymentIntent, "intentId" | "status" | "createdAt">, owner?: string): IntentWithOwner {
+    const newIntent: IntentWithOwner = {
       intentId: randomUUID(),
       ...intent,
       status: "pending",
       createdAt: new Date().toISOString(),
+      owner,
     };
     this.intents.set(newIntent.intentId, newIntent);
     return newIntent;
   }
 
-  getById(intentId: string): PaymentIntent | undefined {
+  getById(intentId: string): IntentWithOwner | undefined {
     return this.intents.get(intentId);
   }
 
-  getAll(): PaymentIntent[] {
+  getAll(): IntentWithOwner[] {
     return Array.from(this.intents.values());
   }
 
@@ -29,6 +34,11 @@ class IntentService {
     intent.status = status;
     if (txHash) intent.txHash = txHash;
     return true;
+  }
+
+  verifyOwnership(intentId: string, owner: string): boolean {
+    const intent = this.intents.get(intentId);
+    return intent?.owner === owner;
   }
 }
 
