@@ -156,8 +156,9 @@ export class Orchestrator {
 
       const tx = await settlementContract.executeSettlement(
         intentHash,
-        amountWei,
         intent.recipient,
+        amountWei,
+        nonce,
         signature
       );
 
