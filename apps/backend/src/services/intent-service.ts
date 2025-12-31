@@ -27,7 +27,7 @@ class IntentService {
     const intent = this.intents.get(intentId);
     if (!intent) return false;
     intent.status = status;
-    if (txHash) intent.executedTxHash = txHash;
+    if (txHash) intent.txHash = txHash;
     return true;
   }
 }

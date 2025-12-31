@@ -29,18 +29,32 @@ export async function createIntent(
     const errors: string[] = [];
 
     if (!amount) errors.push("amount is required");
+    else if (isNaN(Number(amount)) || Number(amount) <= 0) {
+      errors.push("amount must be a positive number");
+    }
+
     if (!currency) errors.push("currency is required");
-    if (!recipient) errors.push("recipient is required");
-    if (!isValidEthereumAddress(recipient || "")) {
+
+    if (!recipient) {
+      errors.push("recipient is required");
+    } else if (!isValidEthereumAddress(recipient)) {
       errors.push("recipient must be a valid Ethereum address");
     }
 
-    if (!condition) errors.push("condition is required");
-    if (condition && !condition.type) errors.push("condition.type is required");
-    if (condition && !["manual", "price-below"].includes(condition.type || "")) {
-      errors.push("condition.type must be 'manual' or 'price-below'");
+    if (!condition) {
+      errors.push("condition is required");
+    } else {
+      if (!condition.type) errors.push("condition.type is required");
+      else if (!["manual", "price-below"].includes(condition.type)) {
+        errors.push("condition.type must be 'manual' or 'price-below'");
+      }
+
+      if (!condition.value) {
+        errors.push("condition.value is required");
+      } else if (condition.type === "price-below" && isNaN(Number(condition.value))) {
+        errors.push("condition.value must be a valid number for price-below type");
+      }
     }
-    if (condition && !condition.value) errors.push("condition.value is required");
 
     if (errors.length > 0) {
       const response: ApiResponse = {
@@ -58,10 +72,13 @@ export async function createIntent(
 
     // Create intent
     const newIntent = intentService.create({
-      amount: amount!,
-      currency: currency!,
-      recipient: recipient!,
-      condition: condition!,
+      amount: amount as string,
+      currency: currency as string,
+      recipient: recipient as string,
+      condition: {
+        type: condition!.type as "manual" | "price-below",
+        value: condition!.value as string,
+      },
     });
 
     const response: ApiResponse<PaymentIntent> = {
