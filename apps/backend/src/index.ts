@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 import { showBanner } from './utils/banner';
 import { intentRoutes } from './api/routes/intents';
 import { initializeAgentService } from './services/agent-service';
+import { initializeWalletService } from './services/wallet-service';
+import { getWalletService } from './services/wallet-service';
 
 dotenv.config();
 
@@ -51,6 +53,9 @@ server.register(cors, {
 
 // Initialize services
 initializeAgentService(server);
+initializeWalletService(server);
+const walletAddress = getWalletService().getAddress();
+server.log.info(`[WalletService] Wallet address: ${walletAddress}`);
 
 // Register API routes
 server.register(intentRoutes, { prefix: '/api' });
