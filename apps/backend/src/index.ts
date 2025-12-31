@@ -4,6 +4,7 @@ import helmet from '@fastify/helmet';
 import dotenv from 'dotenv';
 import { showBanner } from './utils/banner';
 import { intentRoutes } from './api/routes/intents';
+import { agentRoutes } from './api/routes/agent';
 import { initializeAgentService } from './services/agent-service';
 import { initializeWalletService } from './services/wallet-service';
 import { getWalletService } from './services/wallet-service';
@@ -59,6 +60,7 @@ server.log.info(`[WalletService] Wallet address: ${walletAddress}`);
 
 // Register API routes
 server.register(intentRoutes, { prefix: '/api' });
+server.register(agentRoutes, { prefix: '/api' });
 
 // Health check endpoint
 server.get<{ Reply: ApiResponse }>('/health', async () => {

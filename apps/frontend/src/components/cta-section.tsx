@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 export function CTASection() {
   return (
     <section className="py-24 bg-gradient-to-r from-blue-900/50 via-gray-900 to-cyan-900/50 relative overflow-hidden">
@@ -18,9 +20,11 @@ export function CTASection() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <button className="px-10 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-lg hover:shadow-xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-105 text-lg">
-            Launch App
-          </button>
+          <Link href="/dashboard">
+            <button className="px-10 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-lg hover:shadow-xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-105 text-lg">
+              Launch App
+            </button>
+          </Link>
           <button className="px-10 py-4 border-2 border-blue-400 text-blue-300 font-bold rounded-lg hover:bg-blue-500/10 transition-all duration-300 text-lg">
             View Docs
           </button>
