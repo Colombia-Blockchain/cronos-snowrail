@@ -9,12 +9,13 @@ const SETTLEMENT_CONTRACT_ABI = [
   {
     inputs: [
       { internalType: 'bytes32', name: 'intentHash', type: 'bytes32' },
+      { internalType: 'address payable', name: 'recipient', type: 'address' },
       { internalType: 'uint256', name: 'amount', type: 'uint256' },
-      { internalType: 'address', name: 'recipient', type: 'address' },
+      { internalType: 'uint256', name: 'nonce', type: 'uint256' },
       { internalType: 'bytes', name: 'signature', type: 'bytes' },
     ],
     name: 'executeSettlement',
-    outputs: [{ internalType: 'bytes32', name: '', type: 'bytes32' }],
+    outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
   },
@@ -22,9 +23,10 @@ const SETTLEMENT_CONTRACT_ABI = [
     anonymous: false,
     inputs: [
       { indexed: true, internalType: 'bytes32', name: 'intentHash', type: 'bytes32' },
-      { indexed: false, internalType: 'string', name: 'txHash', type: 'string' },
+      { indexed: true, internalType: 'address', name: 'recipient', type: 'address' },
+      { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
     ],
-    name: 'PaymentSettled',
+    name: 'PaymentExecuted',
     type: 'event',
   },
 ];
