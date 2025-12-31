@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { PaymentIntent, ApiResponse } from "@cronos-x402/shared-types";
+import { PaymentIntent, ApiResponse, AgentDecision } from "@cronos-x402/shared-types";
 import { intentService } from "../../services/intent-service";
+import { getAgentService } from "../../services/agent-service";
 
 // Validation helper
 function isValidEthereumAddress(address: string): boolean {
@@ -81,11 +82,26 @@ export async function createIntent(
       },
     });
 
-    const response: ApiResponse<PaymentIntent> = {
+    // Evaluate intent using Agent
+    const agentService = getAgentService();
+    const agentDecision = await agentService.evaluate(newIntent);
+
+    request.server.log.info(
+      { intentId: newIntent.intentId, decision: agentDecision.decision },
+      '[Controller] Agent decision received'
+    );
+
+    // Include agent decision in response
+    const responseData: PaymentIntent & { agentDecision?: AgentDecision } = {
+      ...newIntent,
+      agentDecision,
+    };
+
+    const response: ApiResponse<typeof responseData> = {
       status: "success",
       code: "INTENT_CREATED",
       message: "Payment intent successfully created",
-      data: newIntent,
+      data: responseData,
     };
 
     reply.code(201).send(response);
