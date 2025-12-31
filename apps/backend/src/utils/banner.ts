@@ -1,9 +1,9 @@
 import figlet from 'figlet';
 import chalk from 'chalk';
 
-export const showBanner = () => {
+export const showBanner = (port: number = 3001, network: string = 'Cronos Testnet') => {
   console.clear();
-  
+
   const banner = figlet.textSync('Cronos x402', {
     font: 'Slant',
     horizontalLayout: 'default',
@@ -15,8 +15,8 @@ export const showBanner = () => {
   console.log(chalk.bold.white(' 🚀 AGENTIC TREASURY SYSTEM'));
   console.log(chalk.cyan('------------------------------------------------------------'));
   console.log(chalk.green(` ✅ Status:    `) + chalk.white('Online'));
-  console.log(chalk.green(` 📡 Port:      `) + chalk.white(process.env.PORT || '3001'));
-  console.log(chalk.green(` 🔗 Network:   `) + chalk.white('Cronos Testnet (EVM)'));
+  console.log(chalk.green(` 📡 Port:      `) + chalk.white(port.toString()));
+  console.log(chalk.green(` 🔗 Network:   `) + chalk.white(`${network} (EVM)`));
   console.log(chalk.green(` 🤖 Mode:      `) + chalk.white('Autonomous Agent'));
   console.log(chalk.cyan('------------------------------------------------------------'));
   console.log(chalk.gray(' Press CTRL+C to stop the server'));
