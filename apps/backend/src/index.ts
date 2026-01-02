@@ -8,6 +8,8 @@ import { agentRoutes } from './api/routes/agent';
 import { initializeAgentService } from './services/agent-service';
 import { initializeWalletService } from './services/wallet-service';
 import { getWalletService } from './services/wallet-service';
+import { initializePriceService } from './services/price-service';
+import { mcpPlugin } from './mcp';
 
 dotenv.config();
 
@@ -55,12 +57,16 @@ server.register(cors, {
 // Initialize services
 initializeAgentService(server);
 initializeWalletService(server);
+initializePriceService(server);
 const walletAddress = getWalletService().getAddress();
 server.log.info(`[WalletService] Wallet address: ${walletAddress}`);
 
 // Register API routes
 server.register(intentRoutes, { prefix: '/api' });
 server.register(agentRoutes, { prefix: '/api' });
+
+// Register MCP plugin for AI assistant integration
+server.register(mcpPlugin);
 
 // Health check endpoint
 server.get<{ Reply: ApiResponse }>('/health', async () => {
@@ -107,6 +113,13 @@ server.get<{ Reply: ApiResponse }>('/health/ready', async () => {
         executeIntent: 'POST /api/intents/:id/execute',
         getIntent: 'GET /api/intents/:id',
         listIntents: 'GET /api/intents',
+        triggerAgent: 'POST /api/agent/trigger',
+      },
+      mcp: {
+        enabled: true,
+        endpoint: 'POST /mcp',
+        toolsDiscovery: 'GET /mcp/tools',
+        health: 'GET /mcp/health',
       },
     },
   };
