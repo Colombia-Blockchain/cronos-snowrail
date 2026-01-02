@@ -3,6 +3,7 @@ import { ApiResponse } from '@cronos-x402/shared-types';
 import { intentService } from '../../services/intent-service';
 import { getAgentService } from '../../services/agent-service';
 import { Orchestrator } from '../../x402/orchestrator';
+import { decodeCustomError } from '../../utils/error-decoder';
 
 // Agent trigger handler
 async function triggerAgent(
@@ -117,8 +118,9 @@ async function triggerAgent(
           );
         }
       } catch (executionError) {
+        const decodedError = decodeCustomError(executionError);
         request.server.log.error(
-          { intentId, error: String(executionError) },
+          { intentId, error: decodedError },
           '[AgentRoute] Orchestrator execution failed'
         );
 
@@ -131,7 +133,7 @@ async function triggerAgent(
           message: 'Failed to execute payment intent on blockchain',
           details: {
             traceId: request.id,
-            error: executionError instanceof Error ? executionError.message : String(executionError),
+            error: decodedError,
           },
         };
         reply.code(500).send(response);

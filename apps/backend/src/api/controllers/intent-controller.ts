@@ -3,6 +3,7 @@ import { PaymentIntent, ApiResponse, AgentDecision } from "@cronos-x402/shared-t
 import { intentService } from "../../services/intent-service";
 import { getAgentService } from "../../services/agent-service";
 import { Orchestrator } from "../../x402/orchestrator";
+import { decodeCustomError } from "../../utils/error-decoder";
 
 // Validation helper
 function isValidEthereumAddress(address: string): boolean {
@@ -214,8 +215,8 @@ export async function executeIntent(
   }>,
   reply: FastifyReply
 ): Promise<void> {
+  const { id } = request.params;
   try {
-    const { id } = request.params;
 
     const intent = intentService.getById(id);
 
@@ -295,13 +296,26 @@ export async function executeIntent(
 
     reply.code(txHash ? 200 : 202).send(response);
   } catch (error) {
-    request.server.log.error(error);
+    const decodedError = decodeCustomError(error);
+    request.server.log.error(
+      {
+        intentId: id,
+        error: decodedError,
+        originalError: error instanceof Error ? error.message : String(error),
+      },
+      '[Controller] Intent execution failed'
+    );
+
+    // Mark intent as failed
+    intentService.updateStatus(id, "failed");
+
     const response: ApiResponse = {
       status: "error",
       code: "EXECUTION_FAILED",
       message: "Failed to execute payment intent",
       details: {
         traceId: request.id,
+        reason: decodedError,
         originalError:
           process.env.NODE_ENV === "development" ? String(error) : undefined,
       },
