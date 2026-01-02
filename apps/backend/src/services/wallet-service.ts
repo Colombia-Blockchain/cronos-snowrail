@@ -28,11 +28,10 @@ export class WalletService {
     return signature;
   }
 
-  async signHash(messageText: string): Promise<string> {
-    // Sign a message for intent verification
-    // Uses EIP-191 format: \x19Ethereum Signed Message:\n{len}{message}
-    const messageBytes = ethers.toUtf8Bytes(messageText);
-    const signature = await this.wallet.signMessage(messageBytes);
+  async signHash(digest: string): Promise<string> {
+    // Sign an EIP-712 digest
+    // The digest should be a keccak256 hash in hex format
+    const signature = this.wallet.signingKey.sign(digest).serialized;
     return signature;
   }
 
