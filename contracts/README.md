@@ -326,11 +326,34 @@ npm run test -- --reporter spec
 
 #### Contratos Desplegados en Testnet
 
-| Contrato | Dirección | Hash TX | Bloque |
-|----------|-----------|---------|--------|
-| Settlement | [`0xae6E14caD8D4f43947401fce0E4717b8D17b4382`](https://testnet.cronoscan.com/address/0xae6E14caD8D4f43947401fce0E4717b8D17b4382) | `0x50f2b9b1ca5bc192a1c99b2eb06ef49809bf7523e284cd7838bc9f1798a23e61` | 65354308 |
+| Contrato | Dirección | Descripción |
+|----------|-----------|-------------|
+| Settlement | [`0xae6E14caD8D4f43947401fce0E4717b8D17b4382`](https://testnet.cronoscan.com/address/0xae6E14caD8D4f43947401fce0E4717b8D17b4382) | Vault principal - pagos autorizados |
+| ZKMixer | [`0xfAef6b16831d961CBd52559742eC269835FF95FF`](https://testnet.cronoscan.com/address/0xfAef6b16831d961CBd52559742eC269835FF95FF) | Mixer privado con verificación ZK |
 
 **Executor (Backend Wallet)**: `0x40C7fa08031dB321245a2f96E6064D2cF269f18B`
+
+#### ZKMixer - Privacy Mixer
+
+El contrato ZKMixer implementa transferencias privadas con verificación de pruebas ZK:
+
+```
+FLUJO DE PRIVACIDAD:
+─────────────────────────────────────────────────────
+Alice deposita → commitment = hash(nullifier, secret)
+                     ↓
+               Merkle Tree
+                     ↓
+Bob retira   ← prueba ZK (sin revelar nullifier/secret)
+─────────────────────────────────────────────────────
+Los observadores NO pueden vincular depósito con retiro
+```
+
+**Características:**
+- **Denominación**: 0.1 CRO por depósito
+- **Árbol Merkle**: Profundidad 20 (~1M depósitos)
+- **Historia de raíces**: 30 entradas
+- **Verificación ZK**: On-chain en `withdraw()`
 
 ### Cronos Mainnet
 

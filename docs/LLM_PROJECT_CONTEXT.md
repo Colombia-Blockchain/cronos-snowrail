@@ -4,7 +4,12 @@
 
 ## Project Summary
 
-**Cronos x402 Agentic Treasury** is an autonomous AI-driven payment settlement system built on Cronos EVM. It enables conditional payments where an AI Agent evaluates conditions (manual triggers or price-based) and executes settlements on the blockchain via the x402 protocol.
+**Cronos x402 Agentic Treasury** is an autonomous AI-driven payment settlement system built on Cronos EVM with **privacy-preserving ZK capabilities**. It enables conditional payments where an AI Agent evaluates conditions (manual triggers or price-based) and executes settlements on the blockchain via the x402 protocol.
+
+**Key Privacy Features:**
+- **ZK Mixer**: Privacy-preserving deposits/withdrawals with unlinkable transactions
+- **ZK Proofs**: Noir-based proofs for private condition verification
+- **Modular Architecture**: LEGO-style swappable ZK providers
 
 **Target:** Cronos x402 Paytech Hackathon (Deadline: Jan 23, 2026)
 
@@ -14,11 +19,15 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Smart Contract | ✅ Deployed | Cronos Testnet |
+| Smart Contract (Settlement) | ✅ Deployed | `0xae6E14caD8D4f43947401fce0E4717b8D17b4382` |
+| Smart Contract (ZKMixer) | ✅ Deployed | `0xfAef6b16831d961CBd52559742eC269835FF95FF` |
 | Backend API | ✅ Complete | Fastify + TypeScript |
 | Frontend | ✅ Complete | Next.js 14 |
 | MCP Server | ✅ Complete | JSON-RPC 2.0 |
 | Crypto.com MCP Integration | ✅ Complete | Price data |
+| ZK LEGO Architecture | ✅ Complete | Swappable providers |
+| Noir Circuits | ✅ Complete | price_condition, mixer |
+| Mixer Service | ✅ Complete | On-chain sync |
 | Documentation | ✅ Complete | Multiple docs |
 | Demo Video | ❌ Pending | Required for submission |
 
@@ -44,15 +53,26 @@
 │  └─────────────┘  └─────────────┘  │ • AgentService          │ │
 │                                     │ • WalletService         │ │
 │  ┌─────────────┐  ┌─────────────┐  │ • PriceService          │ │
-│  │ AI Agent    │  │Orchestrator │  └─────────────────────────┘ │
-│  │ (Decider)   │  │ (Executor)  │                              │
-│  └─────────────┘  └─────────────┘                              │
+│  │ AI Agent    │  │Orchestrator │  │ • MixerService (ZK)     │ │
+│  │ (Decider)   │  │ (Executor)  │  └─────────────────────────┘ │
+│  └──────┬──────┘  └─────────────┘                              │
+│         │                                                        │
+│  ┌──────▼──────────────────────────────────────────────────────┐│
+│  │              ZK LEGO MODULES (Swappable)                    ││
+│  │  ┌─────────────────┐  ┌─────────────────────────────────┐  ││
+│  │  │ IVerifyProvider │  │ IZKProofProvider                │  ││
+│  │  │ • MockVerify    │  │ • MockZK / NoirProvider         │  ││
+│  │  │ • CronosVerify  │  │ • Circuits: price_condition     │  ││
+│  │  └─────────────────┘  └─────────────────────────────────┘  ││
+│  └─────────────────────────────────────────────────────────────┘│
 └─────────────────────────┬───────────────────────────────────────┘
                           │ RPC
 ┌─────────────────────────▼───────────────────────────────────────┐
 │                    CRONOS BLOCKCHAIN                             │
 │                                                                  │
 │  Settlement.sol: 0xae6E14caD8D4f43947401fce0E4717b8D17b4382    │
+│  ZKMixer.sol:    0xfAef6b16831d961CBd52559742eC269835FF95FF    │
+│                                                                  │
 │  Network: Cronos Testnet (Chain ID: 338)                        │
 │  RPC: https://evm-t3.cronos.org                                 │
 └─────────────────────────────────────────────────────────────────┘
@@ -69,11 +89,14 @@ cronos-snowrail/
 │   │   └── src/
 │   │       ├── index.ts         # Server entry point
 │   │       ├── agent/
-│   │       │   └── agent.ts     # AI decision logic
+│   │       │   └── agent.ts     # AI decision logic + ZK integration
 │   │       ├── api/
 │   │       │   ├── routes/      # REST endpoints
+│   │       │   │   ├── intents.ts
+│   │       │   │   ├── agent.ts
+│   │       │   │   └── mixer.ts     # ZK Mixer endpoints
 │   │       │   └── controllers/ # Request handlers
-│   │       ├── mcp/             # MCP Server (NEW)
+│   │       ├── mcp/             # MCP Server
 │   │       │   ├── index.ts     # MCP plugin setup
 │   │       │   ├── tools.ts     # Tool definitions
 │   │       │   └── handlers.ts  # Tool handlers
@@ -81,7 +104,19 @@ cronos-snowrail/
 │   │       │   ├── intent-service.ts
 │   │       │   ├── agent-service.ts
 │   │       │   ├── wallet-service.ts
-│   │       │   └── price-service.ts  # NEW: Crypto.com MCP + CoinGecko
+│   │       │   ├── price-service.ts  # Crypto.com MCP + CoinGecko
+│   │       │   └── mixer-service.ts  # ZK Mixer with Merkle tree
+│   │       ├── zk/                   # ZK LEGO Architecture
+│   │       │   ├── index.ts          # Factory initialization
+│   │       │   ├── factory.ts        # Provider factory
+│   │       │   ├── interfaces/
+│   │       │   │   ├── IVerifyProvider.ts
+│   │       │   │   └── IZKProofProvider.ts
+│   │       │   └── providers/
+│   │       │       ├── MockVerifyProvider.ts
+│   │       │       ├── CronosVerifyProvider.ts
+│   │       │       ├── MockZKProvider.ts
+│   │       │       └── NoirProvider.ts
 │   │       ├── x402/
 │   │       │   └── orchestrator.ts   # Settlement execution
 │   │       └── utils/
@@ -95,10 +130,22 @@ cronos-snowrail/
 │           ├── hooks/           # Custom hooks
 │           └── services/        # API client
 │
+├── circuits/                    # Noir ZK Circuits
+│   ├── README.md
+│   ├── mixer/                   # Mixer privacy circuit
+│   │   ├── Nargo.toml
+│   │   └── src/main.nr
+│   └── price_condition/         # Price threshold circuit
+│       ├── Nargo.toml
+│       └── src/main.nr
+│
 ├── contracts/                   # Solidity contracts
 │   ├── contracts/
-│   │   └── Settlement.sol       # Main settlement contract
-│   ├── scripts/                 # Deployment scripts
+│   │   ├── Settlement.sol       # Main settlement contract
+│   │   └── ZKMixer.sol          # Privacy mixer with ZK verification
+│   ├── scripts/
+│   │   ├── deploy.ts
+│   │   └── deploy-mixer.ts
 │   └── deployments/             # Deployment artifacts
 │
 ├── packages/
@@ -107,7 +154,7 @@ cronos-snowrail/
 └── docs/                        # Documentation
     ├── ARCHITECTURE.md
     ├── API_STANDARDS.md
-    ├── MCP_INTEGRATION.md       # NEW
+    ├── MCP_INTEGRATION.md
     └── LLM_PROJECT_CONTEXT.md   # THIS FILE
 ```
 
@@ -196,9 +243,9 @@ GET    /mcp/health               MCP health check
 
 ---
 
-## Smart Contract
+## Smart Contracts
 
-**Settlement.sol** - Main settlement contract
+### Settlement.sol - Main Settlement Contract
 
 **Address:** `0xae6E14caD8D4f43947401fce0E4717b8D17b4382`
 
@@ -219,6 +266,125 @@ function executeSettlement(
 - Zero address checks
 - Balance verification
 - Re-execution prevention
+
+### ZKMixer.sol - Privacy Mixer
+
+**Address:** `0xfAef6b16831d961CBd52559742eC269835FF95FF`
+
+**Privacy Model:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  DEPOSIT                          WITHDRAW                   │
+│  ────────                         ────────                   │
+│  Alice → commitment → Pool   →   Bob proves knowledge  → Bob │
+│                                  of (nullifier, secret)      │
+│                                                              │
+│  Observers see:                  Observers see:             │
+│  ✅ Alice deposited              ✅ Bob withdrew             │
+│  ❌ Cannot link to Bob           ❌ Cannot link to Alice     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Key Functions:**
+```solidity
+function deposit(bytes32 commitment) external payable
+function withdraw(
+    bytes calldata proof,
+    bytes32 root,
+    bytes32 nullifierHash,
+    address payable recipient,
+    address payable relayer,
+    uint256 fee
+) external
+```
+
+**Security Features:**
+- Merkle tree commitment scheme
+- Nullifier prevents double-spending
+- ZK proof verification on-chain
+- Root history (30 entries) for async withdrawals
+
+---
+
+## ZK Privacy Architecture (LEGO Modules)
+
+The backend uses a modular "LEGO" architecture for ZK components, allowing easy swapping of providers.
+
+### Interfaces
+
+```typescript
+// IVerifyProvider - Identity verification abstraction
+interface IVerifyProvider {
+  name: string;
+  isVerified(address: string): Promise<boolean>;
+  getVerificationStatus(address: string): Promise<VerificationResult>;
+}
+
+// IZKProofProvider - ZK proof generation abstraction
+interface IZKProofProvider {
+  name: string;
+  supportedCircuits: string[];
+  generateProof(input: ZKProofInput): Promise<ZKProof>;
+  verifyProofOffChain(proof: ZKProof): Promise<boolean>;
+}
+```
+
+### Available Providers
+
+| Provider | Type | Description |
+|----------|------|-------------|
+| `MockVerifyProvider` | Verify | Testing/dev - always returns verified |
+| `CronosVerifyProvider` | Verify | Cronos Verify integration (placeholder) |
+| `MockZKProvider` | ZK Proof | Testing - generates mock proofs |
+| `NoirProvider` | ZK Proof | Real Noir circuit execution |
+
+### Configuration
+
+Set providers via environment variables:
+
+```env
+VERIFY_PROVIDER=mock         # mock | cronos-verify
+ZK_PROVIDER=mock             # mock | noir
+REQUIRE_VERIFICATION=false   # Enable identity checks
+USE_ZK_PROOFS=true           # Enable ZK proof generation
+```
+
+### Mixer API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/mixer/info` | GET | Get mixer status and stats |
+| `/api/mixer/generate-note` | POST | Generate deposit note (save securely!) |
+| `/api/mixer/deposit` | POST | Deposit CRO with commitment |
+| `/api/mixer/withdraw` | POST | Withdraw with ZK proof |
+| `/api/mixer/simulate-withdraw` | POST | Simulate withdrawal (no execution) |
+
+### Example: Privacy-Preserving Transfer
+
+```bash
+# 1. Generate note (SAVE THIS!)
+curl -X POST http://localhost:4000/api/mixer/generate-note
+
+# Response: { note: { nullifier, secret, commitment, nullifierHash } }
+
+# 2. Deposit 0.1 CRO
+curl -X POST http://localhost:4000/api/mixer/deposit \
+  -H "Content-Type: application/json" \
+  -d '{ "commitment": "0x..." }'
+
+# Response: { txHash, leafIndex }
+
+# 3. Withdraw to ANY address (unlinkable!)
+curl -X POST http://localhost:4000/api/mixer/withdraw \
+  -H "Content-Type: application/json" \
+  -d '{
+    "note": { "nullifier": "0x...", "secret": "0x...", ... },
+    "leafIndex": 4,
+    "recipient": "0x..."
+  }'
+
+# Response: { txHash, privacy: "Withdrawal is unlinkable to your deposit" }
+```
 
 ---
 
@@ -271,11 +437,17 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
 | File | Purpose |
 |------|---------|
 | `apps/backend/src/index.ts` | Server setup, route registration |
-| `apps/backend/src/agent/agent.ts` | AI decision logic |
+| `apps/backend/src/agent/agent.ts` | AI decision logic + ZK integration |
 | `apps/backend/src/x402/orchestrator.ts` | Settlement execution |
 | `apps/backend/src/mcp/index.ts` | MCP server plugin |
 | `apps/backend/src/services/price-service.ts` | Crypto.com MCP + CoinGecko |
+| `apps/backend/src/services/mixer-service.ts` | ZK Mixer with Merkle tree |
+| `apps/backend/src/zk/factory.ts` | ZK provider factory |
+| `apps/backend/src/zk/interfaces/IZKProofProvider.ts` | ZK proof abstraction |
+| `apps/backend/src/api/routes/mixer.ts` | Mixer API endpoints |
 | `contracts/contracts/Settlement.sol` | On-chain settlement |
+| `contracts/contracts/ZKMixer.sol` | Privacy mixer contract |
+| `circuits/mixer/src/main.nr` | Noir mixer circuit |
 
 ---
 
@@ -335,7 +507,30 @@ curl -X POST http://localhost:4000/mcp \
 
 ---
 
-## Recent Changes (Jan 2, 2026)
+## Recent Changes
+
+### Jan 3, 2026 - ZK Privacy Integration
+
+1. **ZKMixer Contract** - Deployed at `0xfAef6b16831d961CBd52559742eC269835FF95FF`
+   - Privacy-preserving deposits/withdrawals
+   - Merkle tree commitment scheme
+   - ZK proof verification on-chain
+
+2. **ZK LEGO Architecture** - Modular provider system
+   - `IVerifyProvider` interface for identity verification
+   - `IZKProofProvider` interface for ZK proof generation
+   - Factory pattern for easy swapping
+
+3. **Mixer Service** - Backend service for mixer operations
+   - On-chain sync with batched event queries
+   - Local Merkle tree management
+   - Withdrawal proof generation
+
+4. **Noir Circuits** - ZK circuits for privacy
+   - `price_condition`: Private price thresholds
+   - `mixer`: Privacy-preserving transfers
+
+### Jan 2, 2026 - MCP Integration
 
 1. Added MCP Server with 5 tools
 2. Integrated Crypto.com Market Data MCP for prices

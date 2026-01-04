@@ -1,13 +1,13 @@
-# Cronos x402 Agentic Treasury 🤖💸
+# Cronos x402 Agentic Treasury 🤖💸🔒
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Status](https://img.shields.io/badge/status-MVP-green.svg)
 ![Network](https://img.shields.io/badge/network-Cronos%20Testnet-blue)
-![Stack](https://img.shields.io/badge/tech-x402%20%7C%20AI%20Agents%20%7C%20Next.js-purple)
+![Stack](https://img.shields.io/badge/tech-x402%20%7C%20AI%20Agents%20%7C%20ZK%20Privacy-purple)
 
-**Autonomous AI-driven treasury settlement system built on Cronos EVM.**
+**Autonomous AI-driven treasury settlement system with ZK privacy built on Cronos EVM.**
 
-This project demonstrates a production-ready **Agentic Treasury** where an AI Agent autonomously evaluates market conditions to execute programmatic payments via the **x402 Paytech** protocol.
+This project demonstrates a production-ready **Agentic Treasury** where an AI Agent autonomously evaluates market conditions to execute programmatic payments via the **x402 Paytech** protocol, with optional **ZK privacy** for unlinkable transactions.
 
 ---
 
@@ -25,6 +25,8 @@ This project demonstrates a production-ready **Agentic Treasury** where an AI Ag
 - **🧠 Autonomous Decision Making**: AI Agent evaluates price/time conditions off-chain.
 - **⚡️ x402 Integration**: Programmatic payment execution on Cronos.
 - **🛡️ Secure Settlement**: On-chain verification via `Settlement.sol`.
+- **🔒 ZK Privacy**: Unlinkable deposits/withdrawals via `ZKMixer.sol`.
+- **🧱 LEGO Architecture**: Swappable ZK providers (Mock/Noir/Cronos Verify).
 - **🏗️ Clean Architecture**: Strict separation of concerns (Thin Client Frontend / Unified Backend).
 
 ---
@@ -45,6 +47,11 @@ This project demonstrates a production-ready **Agentic Treasury** where an AI Ag
 - **Cronos EVM** (Testnet)
 - **Solidity 0.8.24**
 - **Hardhat**
+
+### ZK Privacy
+- **Noir** (ZK circuits)
+- **Merkle Tree** (Commitment scheme)
+- **Poseidon Hash** (ZK-friendly)
 
 ---
 
@@ -142,6 +149,48 @@ npm run test   # (if tests configured)
 ```bash
 npm run test:contracts
 ```
+
+---
+
+## 🔒 Privacy Features (ZK Mixer)
+
+The system includes a **privacy-preserving mixer** for anonymous transfers:
+
+```
+FLUJO DE PRIVACIDAD:
+─────────────────────────────────────────────────────
+Alice deposita → commitment = hash(nullifier, secret)
+                     ↓
+               Merkle Tree
+                     ↓
+Bob retira   ← prueba ZK (sin revelar nullifier/secret)
+─────────────────────────────────────────────────────
+Los observadores NO pueden vincular depósito con retiro
+```
+
+### Quick Privacy Demo
+
+```bash
+# 1. Generate note (SAVE THIS!)
+curl -X POST http://localhost:4000/api/mixer/generate-note
+
+# 2. Deposit 0.1 CRO
+curl -X POST http://localhost:4000/api/mixer/deposit \
+  -H "Content-Type: application/json" \
+  -d '{ "commitment": "0x..." }'
+
+# 3. Withdraw to ANY address (unlinkable!)
+curl -X POST http://localhost:4000/api/mixer/withdraw \
+  -H "Content-Type: application/json" \
+  -d '{ "note": {...}, "leafIndex": 4, "recipient": "0x..." }'
+```
+
+### Deployed Contracts (Testnet)
+
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| Settlement | [`0xae6E14caD8D4f43947401fce0E4717b8D17b4382`](https://testnet.cronoscan.com/address/0xae6E14caD8D4f43947401fce0E4717b8D17b4382) | Authorized payments |
+| ZKMixer | [`0xfAef6b16831d961CBd52559742eC269835FF95FF`](https://testnet.cronoscan.com/address/0xfAef6b16831d961CBd52559742eC269835FF95FF) | Private mixer |
 
 ---
 

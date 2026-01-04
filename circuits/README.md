@@ -19,7 +19,39 @@ nargo --version
 
 ## Available Circuits
 
-### 1. price_condition
+### 1. mixer (Privacy Mixer)
+
+**Contract:** [`0xfAef6b16831d961CBd52559742eC269835FF95FF`](https://testnet.cronoscan.com/address/0xfAef6b16831d961CBd52559742eC269835FF95FF)
+
+Proves valid withdrawal from mixer WITHOUT revealing which deposit.
+
+**Use Case:** Alice deposits 0.1 CRO. Later, Bob withdraws 0.1 CRO proving he knows a valid commitment. Observers CANNOT link Alice to Bob.
+
+```
+PRIVACY FLOW:
+─────────────────────────────────────────────────────
+Alice deposits → commitment = poseidon(nullifier, secret)
+                     ↓
+               Merkle Tree
+                     ↓
+Bob withdraws ← proves knowledge (nullifier, secret)
+─────────────────────────────────────────────────────
+```
+
+**Public Inputs:**
+- `root`: Merkle tree root (proves deposit exists)
+- `nullifierHash`: Prevents double-spending
+- `recipient`: Address receiving funds
+- `relayer`: Relayer address (0 if none)
+- `fee`: Relayer fee amount
+
+**Private Inputs (NEVER revealed):**
+- `nullifier`: Secret value for nullifierHash
+- `secret`: Secret value for commitment
+- `pathElements`: Merkle proof siblings
+- `pathIndices`: Merkle proof directions
+
+### 2. price_condition
 
 Proves that `currentPrice < threshold` WITHOUT revealing the threshold.
 
@@ -33,77 +65,65 @@ Proves that `currentPrice < threshold` WITHOUT revealing the threshold.
 **Private Inputs (NEVER revealed):**
 - `threshold`: Price threshold
 
-### 2. private_transfer
-
-Proves a valid transfer WITHOUT revealing sender, recipient, or amount.
-
-**Use Case:** Kevin sends 100 USDC to Juan. Observers can verify:
-- ✅ A valid transfer happened
-- ✅ Sender had sufficient balance
-- ✅ Transfer is unique (not double-spent)
-
-But they CANNOT see:
-- ❌ Who sent (Kevin)
-- ❌ Who received (Juan)
-- ❌ How much (100 USDC)
-
-**Public Inputs:**
-- `transfer_hash`: Commitment to the transfer (for on-chain tracking)
-- `nullifier`: Prevents double-spending
-- `balance_sufficient`: 1 if sender has enough, 0 otherwise
-
-**Private Inputs (NEVER revealed):**
-- `sender_address`: Hashed address of sender
-- `recipient_address`: Hashed address of recipient
-- `amount`: Transfer amount
-- `sender_balance`: Sender's current balance
-- `nonce`: Unique nonce
-- `sender_secret`: Secret key for nullifier
-
 ## Usage
 
 ### 1. Compile Circuits
 
 ```bash
-cd circuits/price_condition
+cd circuits/mixer
 nargo compile
 
-cd ../private_transfer
+cd ../price_condition
 nargo compile
 ```
 
 ### 2. Run Tests
 
 ```bash
-cd circuits/price_condition
+cd circuits/mixer
 nargo test
 
-cd ../private_transfer
+cd ../price_condition
 nargo test
 ```
 
-### 3. Generate Proofs via Backend API
+### 3. Use via Backend API
+
+**Mixer Flow (Most Common):**
+
+```bash
+# 1. Generate deposit note (SAVE THIS SECURELY!)
+curl -X POST http://localhost:4000/api/mixer/generate-note
+# Returns: { note: { nullifier, secret, commitment, nullifierHash } }
+
+# 2. Deposit 0.1 CRO
+curl -X POST http://localhost:4000/api/mixer/deposit \
+  -H "Content-Type: application/json" \
+  -d '{ "commitment": "0x..." }'
+# Returns: { txHash, leafIndex }
+
+# 3. Withdraw to ANY address (unlinkable!)
+curl -X POST http://localhost:4000/api/mixer/withdraw \
+  -H "Content-Type: application/json" \
+  -d '{
+    "note": { "nullifier": "0x...", "secret": "0x...", ... },
+    "leafIndex": 4,
+    "recipient": "0x..."
+  }'
+# Returns: { txHash, privacy: "Withdrawal is unlinkable to your deposit" }
+```
+
+**Price Condition Proof (via Agent):**
 
 ```typescript
-import { getZKProofService } from './services/zkproof-service';
-
-const zkService = getZKProofService();
-
-// Price condition proof (threshold hidden)
-const priceProof = await zkService.generatePriceConditionProof(
-  0.08,           // currentPrice
-  0.10,           // threshold (PRIVATE)
-  'intent-123'   // intentId
-);
-
-// Private transfer proof (sender, recipient, amount hidden)
-const transferProof = await zkService.generatePrivateTransferProof(
-  'kevin.eth',     // sender (PRIVATE)
-  'juan.eth',      // recipient (PRIVATE)
-  100,             // amount (PRIVATE)
-  1000,            // senderBalance (PRIVATE)
-  'my-secret-key'  // senderSecret (PRIVATE)
-);
+// Agent automatically generates ZK proof for price-below conditions
+const intent = await intentService.create({
+  amount: "0.1",
+  currency: "CRO",
+  recipient: "0x...",
+  condition: { type: "price-below", value: "0.10" }  // threshold is PRIVATE
+});
+// ZK proof generated without revealing the threshold
 ```
 
 ## Price Encoding
@@ -137,16 +157,23 @@ Prices are encoded as u64 with 8 decimal places:
 ```
 circuits/
 ├── README.md
-├── price_condition/
+├── mixer/                    # Privacy mixer circuit
 │   ├── Nargo.toml
 │   ├── src/
-│   │   └── main.nr
+│   │   └── main.nr           # Merkle tree + nullifier verification
 │   └── target/
-│       └── price_condition.json
-└── private_transfer/
+│       └── mixer.json
+└── price_condition/          # Private price threshold circuit
     ├── Nargo.toml
     ├── src/
     │   └── main.nr
     └── target/
-        └── private_transfer.json
+        └── price_condition.json
 ```
+
+## Deployed Contracts
+
+| Circuit | Contract | Address |
+|---------|----------|---------|
+| mixer | ZKMixer | [`0xfAef6b16831d961CBd52559742eC269835FF95FF`](https://testnet.cronoscan.com/address/0xfAef6b16831d961CBd52559742eC269835FF95FF) |
+| price_condition | (Agent-only) | N/A - used off-chain |
