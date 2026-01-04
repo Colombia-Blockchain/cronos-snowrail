@@ -1,7 +1,0 @@
-[package]
-name = "private_transfer"
-type = "bin"
-authors = ["Cronos x402 Team"]
-compiler_version = ">=0.35.0"
-
-[dependencies]
