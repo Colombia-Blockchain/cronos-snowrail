@@ -5,12 +5,14 @@ import dotenv from 'dotenv';
 import { showBanner } from './utils/banner';
 import { intentRoutes } from './api/routes/intents';
 import { agentRoutes } from './api/routes/agent';
+import { mixerRoutes } from './api/routes/mixer';
 import { initializeAgentService } from './services/agent-service';
 import { initializeWalletService } from './services/wallet-service';
 import { getWalletService } from './services/wallet-service';
 import { initializePriceService } from './services/price-service';
-import { initializeZKServices } from './zk';
+import { initializeMixerService } from './services/mixer-service';
 import { mcpPlugin } from './mcp';
+import { initializeZKServices, getZKStatus } from './zk';
 
 dotenv.config();
 
@@ -55,17 +57,23 @@ server.register(cors, {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 });
 
-// Initialize services (order matters: ZK and Price before Agent)
+// Initialize synchronous services first
 initializeWalletService(server);
 initializePriceService(server);
-initializeZKServices(server);
-initializeAgentService(server); // Agent depends on ZK and Price services
+initializeZKServices(server);  // ZK LEGO modules (verification + proofs)
+initializeAgentService(server);
 const walletAddress = getWalletService().getAddress();
 server.log.info(`[WalletService] Wallet address: ${walletAddress}`);
+
+// Initialize async services (will sync in background)
+initializeMixerService(server).catch((err) => {
+  server.log.error({ err }, '[MixerService] Async initialization failed');
+});
 
 // Register API routes
 server.register(intentRoutes, { prefix: '/api' });
 server.register(agentRoutes, { prefix: '/api' });
+server.register(mixerRoutes, { prefix: '/api' });
 
 // Register MCP plugin for AI assistant integration
 server.register(mcpPlugin);
@@ -123,11 +131,16 @@ server.get<{ Reply: ApiResponse }>('/health/ready', async () => {
         toolsDiscovery: 'GET /mcp/tools',
         health: 'GET /mcp/health',
       },
-      zk: {
-        verifyProvider: process.env.VERIFY_PROVIDER || 'mock',
-        zkProvider: process.env.ZK_PROVIDER || 'mock',
-        verificationEnabled: process.env.REQUIRE_VERIFICATION === 'true',
-        zkProofsEnabled: process.env.USE_ZK_PROOFS === 'true',
+      zk: await getZKStatus(),
+      mixer: {
+        enabled: true,
+        contractAddress: process.env.MIXER_CONTRACT_ADDRESS || 'not deployed',
+        endpoints: {
+          info: 'GET /api/mixer/info',
+          generateNote: 'POST /api/mixer/generate-note',
+          deposit: 'POST /api/mixer/deposit',
+          withdraw: 'POST /api/mixer/withdraw',
+        },
       },
     },
   };
