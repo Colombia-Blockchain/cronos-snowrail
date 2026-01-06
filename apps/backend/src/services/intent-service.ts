@@ -1,4 +1,4 @@
-import { PaymentIntent, IntentStatus } from "@cronos-x402/shared-types";
+import { PaymentIntent, IntentStatus, DepositInfo } from "@cronos-x402/shared-types";
 import { randomUUID } from "crypto";
 
 interface IntentWithOwner extends PaymentIntent {
@@ -34,6 +34,25 @@ class IntentService {
     intent.status = status;
     if (txHash) intent.txHash = txHash;
     return true;
+  }
+
+  /**
+   * Record a deposit for an intent
+   */
+  recordDeposit(intentId: string, deposit: DepositInfo): boolean {
+    const intent = this.intents.get(intentId);
+    if (!intent) return false;
+    intent.deposit = deposit;
+    intent.status = "funded";
+    return true;
+  }
+
+  /**
+   * Check if intent has been funded
+   */
+  isFunded(intentId: string): boolean {
+    const intent = this.intents.get(intentId);
+    return !!intent?.deposit;
   }
 
   verifyOwnership(intentId: string, owner: string): boolean {
