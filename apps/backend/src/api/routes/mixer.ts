@@ -63,8 +63,7 @@ export async function mixerRoutes(fastify: FastifyInstance): Promise<void> {
       // Get on-chain info if contract is deployed
       let onChainInfo = null;
       if (mixerAddress) {
-        const walletService = getWalletService();
-        const provider = new ethers.JsonRpcProvider(process.env.CRONOS_RPC_URL);
+        const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
         const mixer = new ethers.Contract(mixerAddress, MIXER_ABI, provider);
 
         const [root, depositCount, denomination] = await Promise.all([
