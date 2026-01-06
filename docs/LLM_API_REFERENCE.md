@@ -301,6 +301,17 @@ Trigger the AI agent to evaluate and execute a payment intent.
 
 The mixer enables private transfers using ZK-SNARKs. Users deposit a fixed amount, then withdraw to any address without on-chain linkability.
 
+**IMPORTANT:** Mixer endpoints return TX data for the **frontend wallet to sign and execute**. The backend does NOT sign mixer transactions - users control their own funds.
+
+### Signing Model
+
+| Endpoint | Who Signs | Description |
+|----------|-----------|-------------|
+| `/api/mixer/deposit` | **Frontend** (user's wallet) | User deposits their own funds |
+| `/api/mixer/withdraw` | **Frontend** (user's wallet) | User withdraws to any address |
+| `/api/intents/:id/execute` | Backend (agent wallet) | Agent executes from pool |
+| `/api/agent/trigger` | Backend (agent wallet) | Agent executes from pool |
+
 ### GET /api/mixer/info
 
 Get mixer contract information and local Merkle tree state.
@@ -315,17 +326,17 @@ Get mixer contract information and local Merkle tree state.
   "message": "Mixer information retrieved",
   "data": {
     "denomination": "0.1 CRO",
-    "localDepositCount": 5,
+    "localDepositCount": 7,
     "localRoot": "0x0e4b9c97bbfeedd188653309a61ea97d52ad42f9307ad91db0271a707c7831f2",
     "onChain": {
       "contractAddress": "0xfAef6b16831d961CBd52559742eC269835FF95FF",
       "currentRoot": "0x0e4b9c97bbfeedd188653309a61ea97d52ad42f9307ad91db0271a707c7831f2",
-      "depositCount": 5,
+      "depositCount": 7,
       "denomination": "0.1 CRO"
     },
     "privacyModel": {
       "description": "Deposit funds, withdraw to any address without link",
-      "anonymitySet": 5
+      "anonymitySet": 7
     }
   }
 }
@@ -362,7 +373,7 @@ Generate a new deposit note. **SAVE THIS SECURELY - required for withdrawal**.
 
 ### POST /api/mixer/deposit
 
-Deposit funds into the mixer contract.
+Prepare deposit TX data. **Frontend must sign and broadcast.**
 
 **Request Body**:
 ```json
@@ -379,16 +390,66 @@ Deposit funds into the mixer contract.
 ```json
 {
   "status": "success",
-  "code": "DEPOSIT_SUCCESS",
-  "message": "Deposit successful!",
+  "code": "DEPOSIT_TX_PREPARED",
+  "message": "Deposit transaction prepared. Sign and send from your wallet.",
   "data": {
-    "txHash": "0x04770e94238ceb500b03fdca730816647df8dc27f60d3b0b0e7d9801ce22ef59",
-    "leafIndex": 5,
+    "tx": {
+      "to": "0xfAef6b16831d961CBd52559742eC269835FF95FF",
+      "data": "0xb214faa5...",
+      "value": "100000000000000000"
+    },
     "commitment": "0xbee39522c740cace6820e7d22d7feb9a6b084b4f20d22b3594acc789bf722a3a",
     "amount": "0.1 CRO",
     "instructions": [
-      "Save your deposit note with the leafIndex",
-      "leafIndex: 5",
+      "1. Sign this transaction with your connected wallet",
+      "2. After confirmation, call /mixer/confirm-deposit with txHash",
+      "3. Save your note securely for withdrawal"
+    ]
+  }
+}
+```
+
+**Frontend Usage (ethers.js):**
+```typescript
+const { tx } = response.data;
+const transaction = await signer.sendTransaction({
+  to: tx.to,
+  data: tx.data,
+  value: tx.value
+});
+await transaction.wait();
+// Then call /mixer/confirm-deposit with txHash
+```
+
+### POST /api/mixer/confirm-deposit
+
+Confirm deposit after frontend executes TX. Updates local Merkle tree.
+
+**Request Body**:
+```json
+{
+  "txHash": "0x8d4163b360ba79a78703c92f55482333d85899f9a64eef5ea4156e6b433e5cc4",
+  "commitment": "0xbee39522c740cace6820e7d22d7feb9a6b084b4f20d22b3594acc789bf722a3a"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `txHash` | string | Yes | Transaction hash from frontend execution |
+| `commitment` | string | Yes | Original commitment from note |
+
+**Response** (200 OK):
+```json
+{
+  "status": "success",
+  "code": "DEPOSIT_CONFIRMED",
+  "message": "Deposit confirmed and recorded",
+  "data": {
+    "txHash": "0x8d4163b360ba79a78703c92f55482333d85899f9a64eef5ea4156e6b433e5cc4",
+    "leafIndex": 6,
+    "commitment": "0xbee39522c740cace6820e7d22d7feb9a6b084b4f20d22b3594acc789bf722a3a",
+    "instructions": [
+      "Save leafIndex: 6 with your note",
       "You can now withdraw to any address"
     ]
   }
@@ -397,7 +458,7 @@ Deposit funds into the mixer contract.
 
 ### POST /api/mixer/withdraw
 
-Withdraw funds from mixer to any address (unlinkable from deposit).
+Prepare withdraw TX data. **Frontend must sign and broadcast.**
 
 **Request Body**:
 ```json
@@ -408,8 +469,8 @@ Withdraw funds from mixer to any address (unlinkable from deposit).
     "commitment": "0xbee39522c740cace6820e7d22d7feb9a6b084b4f20d22b3594acc789bf722a3a",
     "nullifierHash": "0x3803dad3099dd63d4e1329952acd15196c25694a60856c93099ed1cb208f3533"
   },
-  "leafIndex": 5,
-  "recipient": "0x0000000000000000000000000000000000000003",
+  "leafIndex": 6,
+  "recipient": "0x40C7fa08031dB321245a2f96E6064D2cF269f18B",
   "relayer": "0x0000000000000000000000000000000000000000",
   "fee": "0"
 }
@@ -417,12 +478,12 @@ Withdraw funds from mixer to any address (unlinkable from deposit).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `note` | object | Yes | The complete deposit note (see structure below) |
+| `note` | object | Yes | The complete deposit note |
 | `note.nullifier` | string | Yes | Random nullifier (hex) |
 | `note.secret` | string | Yes | Random secret (hex) |
 | `note.commitment` | string | Yes | Poseidon hash of nullifier+secret |
 | `note.nullifierHash` | string | Yes | Hash of nullifier for double-spend prevention |
-| `leafIndex` | number | Yes | Index returned from deposit |
+| `leafIndex` | number | Yes | Index returned from confirm-deposit |
 | `recipient` | string | Yes | Address to receive funds |
 | `relayer` | string | No | Relayer address (default: zero address) |
 | `fee` | string | No | Relayer fee (default: "0") |
@@ -431,16 +492,36 @@ Withdraw funds from mixer to any address (unlinkable from deposit).
 ```json
 {
   "status": "success",
-  "code": "WITHDRAWAL_SUCCESS",
-  "message": "Withdrawal successful!",
+  "code": "WITHDRAW_TX_PREPARED",
+  "message": "Withdrawal transaction prepared. Sign and send from your wallet.",
   "data": {
-    "txHash": "0x1585ff9f117abe3201cb990dc380d4eeac811ac29fd187fdf69a1e6e29b7d017",
-    "recipient": "0x0000000000000000000000000000000000000003",
+    "tx": {
+      "to": "0xfAef6b16831d961CBd52559742eC269835FF95FF",
+      "data": "0xf9eed560...",
+      "value": "0"
+    },
+    "recipient": "0x40C7fa08031dB321245a2f96E6064D2cF269f18B",
     "amount": "0.1 CRO",
-    "gasUsed": "79390",
-    "privacy": "Withdrawal is unlinkable to your deposit"
+    "privacy": "Withdrawal will be unlinkable to your deposit",
+    "instructions": [
+      "1. Sign this transaction with your connected wallet",
+      "2. Funds will be sent to the recipient address",
+      "3. No on-chain link between deposit and withdrawal"
+    ]
   }
 }
+```
+
+**Frontend Usage (ethers.js):**
+```typescript
+const { tx } = response.data;
+const transaction = await signer.sendTransaction({
+  to: tx.to,
+  data: tx.data,
+  value: tx.value,
+  gasLimit: 500000  // Recommended for withdraw
+});
+await transaction.wait();
 ```
 
 ### POST /api/mixer/simulate-withdraw
@@ -813,20 +894,24 @@ interface ApiResponse<T = unknown> {
 |------|------|-------------|
 | `MIXER_INFO` | 200 | Mixer info retrieved |
 | `NOTE_GENERATED` | 200 | Deposit note generated |
-| `DEPOSIT_SUCCESS` | 200 | Deposit transaction successful |
-| `WITHDRAWAL_SUCCESS` | 200 | Withdrawal transaction successful |
+| `DEPOSIT_TX_PREPARED` | 200 | Deposit TX ready for frontend signing |
+| `DEPOSIT_CONFIRMED` | 200 | Deposit confirmed after frontend execution |
+| `WITHDRAW_TX_PREPARED` | 200 | Withdraw TX ready for frontend signing |
 | `COMMITMENT_REQUIRED` | 400 | Missing commitment in request |
 | `INVALID_NOTE` | 400 | Note data is invalid |
 | `INVALID_RECIPIENT` | 400 | Recipient address invalid |
 | `ALREADY_WITHDRAWN` | 400 | Note already used for withdrawal |
 | `INVALID_ROOT` | 400 | Merkle root not recognized |
+| `TX_NOT_FOUND` | 400 | Transaction hash not found on-chain |
+| `TX_FAILED` | 400 | Transaction failed on-chain |
+| `DEPOSIT_EVENT_NOT_FOUND` | 400 | Deposit event not in transaction |
 | `MIXER_NOT_DEPLOYED` | 500 | Mixer contract not available |
 
 ---
 
 ## Example Workflows
 
-### 1. Create and Execute Payment Intent
+### 1. Create and Execute Payment Intent (Backend signs)
 
 ```bash
 # Step 1: Create intent
@@ -839,31 +924,47 @@ curl -X POST http://localhost:4000/api/intents \
     "condition": {"type": "manual", "value": "true"}
   }'
 
-# Step 2: Trigger agent
+# Step 2: Trigger agent (backend signs and executes)
 curl -X POST http://localhost:4000/api/agent/trigger \
   -H "Content-Type: application/json" \
   -d '{"intentId": "<returned-uuid>"}'
 ```
 
-### 2. Private Transfer via Mixer
+### 2. Private Transfer via Mixer (Frontend signs)
 
 ```bash
 # Step 1: Generate note (SAVE THIS!)
-curl -X POST http://localhost:4000/api/mixer/generate-note
+NOTE=$(curl -s -X POST http://localhost:4000/api/mixer/generate-note)
+echo $NOTE | jq .data.note
 
-# Step 2: Deposit (uses commitment from note)
-curl -X POST http://localhost:4000/api/mixer/deposit \
+# Step 2: Get deposit TX data
+TX_DATA=$(curl -s -X POST http://localhost:4000/api/mixer/deposit \
   -H "Content-Type: application/json" \
-  -d '{"commitment": "<commitment-from-note>"}'
+  -d '{"commitment": "<commitment-from-note>"}')
+echo $TX_DATA | jq .data.tx
 
-# Step 3: Withdraw to any address (note required)
-curl -X POST http://localhost:4000/api/mixer/withdraw \
+# Step 3: Frontend signs and sends TX (ethers.js example)
+# const tx = await signer.sendTransaction({ to, data, value });
+# const txHash = tx.hash;
+
+# Step 4: Confirm deposit with txHash
+curl -X POST http://localhost:4000/api/mixer/confirm-deposit \
+  -H "Content-Type: application/json" \
+  -d '{"txHash": "<tx-hash>", "commitment": "<commitment>"}'
+# Response includes leafIndex - SAVE THIS!
+
+# Step 5: Get withdraw TX data
+WITHDRAW_TX=$(curl -s -X POST http://localhost:4000/api/mixer/withdraw \
   -H "Content-Type: application/json" \
   -d '{
     "note": { <full-note-object> },
-    "leafIndex": <from-deposit-response>,
+    "leafIndex": <from-confirm-deposit>,
     "recipient": "0x..."
-  }'
+  }')
+echo $WITHDRAW_TX | jq .data.tx
+
+# Step 6: Frontend signs and sends withdraw TX
+# const tx = await signer.sendTransaction({ to, data, value, gasLimit: 500000 });
 ```
 
 ### 3. MCP Integration

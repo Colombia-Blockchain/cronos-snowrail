@@ -369,39 +369,51 @@ USE_ZK_PROOFS=true           # Enable ZK proof generation
 
 ### Mixer API Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/mixer/info` | GET | Get mixer status and stats |
-| `/api/mixer/generate-note` | POST | Generate deposit note (save securely!) |
-| `/api/mixer/deposit` | POST | Deposit CRO with commitment |
-| `/api/mixer/withdraw` | POST | Withdraw with ZK proof |
-| `/api/mixer/simulate-withdraw` | POST | Simulate withdrawal (no execution) |
+**IMPORTANT:** Mixer uses frontend signing. Backend prepares TX data, user's wallet signs.
 
-### Example: Privacy-Preserving Transfer
+| Endpoint | Method | Who Signs | Description |
+|----------|--------|-----------|-------------|
+| `/api/mixer/info` | GET | - | Get mixer status and stats |
+| `/api/mixer/generate-note` | POST | - | Generate deposit note (save securely!) |
+| `/api/mixer/deposit` | POST | **Frontend** | Get deposit TX data |
+| `/api/mixer/confirm-deposit` | POST | - | Confirm after frontend execution |
+| `/api/mixer/withdraw` | POST | **Frontend** | Get withdraw TX data |
+| `/api/mixer/simulate-withdraw` | POST | - | Simulate withdrawal (no execution) |
+
+### Example: Privacy-Preserving Transfer (Frontend Signing)
 
 ```bash
 # 1. Generate note (SAVE THIS!)
 curl -X POST http://localhost:4000/api/mixer/generate-note
-
 # Response: { note: { nullifier, secret, commitment, nullifierHash } }
 
-# 2. Deposit 0.1 CRO
+# 2. Get deposit TX data
 curl -X POST http://localhost:4000/api/mixer/deposit \
   -H "Content-Type: application/json" \
   -d '{ "commitment": "0x..." }'
+# Response: { tx: { to, data, value } }
 
-# Response: { txHash, leafIndex }
+# 3. Frontend signs and sends TX
+# const tx = await signer.sendTransaction({ to, data, value });
 
-# 3. Withdraw to ANY address (unlinkable!)
+# 4. Confirm deposit
+curl -X POST http://localhost:4000/api/mixer/confirm-deposit \
+  -H "Content-Type: application/json" \
+  -d '{ "txHash": "0x...", "commitment": "0x..." }'
+# Response: { leafIndex: 6 } - SAVE THIS!
+
+# 5. Get withdraw TX data
 curl -X POST http://localhost:4000/api/mixer/withdraw \
   -H "Content-Type: application/json" \
   -d '{
     "note": { "nullifier": "0x...", "secret": "0x...", ... },
-    "leafIndex": 4,
+    "leafIndex": 6,
     "recipient": "0x..."
   }'
+# Response: { tx: { to, data, value } }
 
-# Response: { txHash, privacy: "Withdrawal is unlinkable to your deposit" }
+# 6. Frontend signs and sends withdraw TX
+# const tx = await signer.sendTransaction({ to, data, value, gasLimit: 500000 });
 ```
 
 ---
@@ -526,6 +538,24 @@ curl -X POST http://localhost:4000/mcp \
 ---
 
 ## Recent Changes
+
+### Jan 5, 2026 - Frontend Signing for Mixer
+
+1. **Mixer Endpoints Updated** - Users sign their own transactions
+   - `/api/mixer/deposit` now returns TX data for frontend signing
+   - `/api/mixer/withdraw` now returns TX data for frontend signing
+   - New `/api/mixer/confirm-deposit` endpoint to confirm after frontend execution
+   - Backend no longer signs mixer transactions
+
+2. **Signing Model**:
+   | Component | Who Signs |
+   |-----------|-----------|
+   | Mixer deposit/withdraw | Frontend (user's wallet) |
+   | Settlement intents | Backend (agent wallet) |
+
+3. **Tested on Cronos Testnet**:
+   - Deposit TX: `0x8d4163b360ba79a78703c92f55482333d85899f9a64eef5ea4156e6b433e5cc4`
+   - Withdraw TX: `0x55f25745b19389f00cbe4160fdd8500b65e0ee7984bc0fbde021a3141c6df88e`
 
 ### Jan 3, 2026 - ZK Privacy Integration
 
