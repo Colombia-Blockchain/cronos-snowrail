@@ -1,8 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { useCreateIntent } from '@/hooks/use-create-intent';
-import type { CreateIntentRequest } from '@/services/api';
+import Link from 'next/link';
+import { useCreateIntent } from '@/hooks';
+import { Card, CardHeader, Button, Input, Select, useToast } from '@/components/ui';
+import type { CreateIntentRequest, Currency, ConditionType, CreateIntentResponse } from '@cronos-x402/shared-types';
+
+const CURRENCIES = [
+  { value: 'WCRO', label: 'WCRO' },
+  { value: 'CRO', label: 'CRO' },
+  { value: 'USDC', label: 'USDC' },
+  { value: 'USDT', label: 'USDT' },
+];
+
+const CONDITION_TYPES = [
+  { value: 'manual', label: 'Manual Trigger' },
+  { value: 'price-below', label: 'Price Below Threshold' },
+];
+
+function isValidAddress(address: string): boolean {
+  return /^0x[a-fA-F0-9]{40}$/.test(address);
+}
 
 export function CreateIntentForm() {
   const [formData, setFormData] = useState<CreateIntentRequest>({
@@ -16,21 +34,27 @@ export function CreateIntentForm() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { mutate, isPending, isSuccess, error } = useCreateIntent();
+  const [createdIntent, setCreatedIntent] = useState<CreateIntentResponse | null>(null);
+  const createIntent = useCreateIntent();
+  const toast = useToast();
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.amount || isNaN(Number(formData.amount))) {
-      newErrors.amount = 'Valid amount required';
+    if (!formData.amount || isNaN(Number(formData.amount)) || Number(formData.amount) <= 0) {
+      newErrors.amount = 'Enter a valid amount greater than 0';
     }
 
     if (!formData.recipient) {
-      newErrors.recipient = 'Recipient address required';
+      newErrors.recipient = 'Recipient address is required';
+    } else if (!isValidAddress(formData.recipient)) {
+      newErrors.recipient = 'Invalid Ethereum address format';
     }
 
-    if (!formData.condition.value || isNaN(Number(formData.condition.value))) {
-      newErrors.conditionValue = 'Condition value required';
+    if (formData.condition.type === 'price-below') {
+      if (!formData.condition.value || isNaN(Number(formData.condition.value)) || Number(formData.condition.value) <= 0) {
+        newErrors.conditionValue = 'Enter a valid price threshold';
+      }
     }
 
     setErrors(newErrors);
@@ -39,11 +63,15 @@ export function CreateIntentForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setCreatedIntent(null);
 
     if (!validateForm()) return;
 
-    mutate(formData, {
-      onSuccess: () => {
+    toast.info('Creating intent...', 'Setting up your conditional payment');
+
+    createIntent.mutate(formData, {
+      onSuccess: (data: CreateIntentResponse) => {
+        setCreatedIntent(data);
         setFormData({
           amount: '',
           currency: 'WCRO',
@@ -54,158 +82,156 @@ export function CreateIntentForm() {
           },
         });
         setErrors({});
+        toast.success('Intent created!', `${data.amount} ${data.currency} payment is ready`);
+      },
+      onError: (error) => {
+        toast.error('Failed to create intent', error instanceof Error ? error.message : 'An error occurred');
       },
     });
   };
 
+  const resetForm = () => {
+    setCreatedIntent(null);
+    createIntent.reset();
+  };
+
   return (
-    <div className="w-full max-w-2xl mx-auto p-8 bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-lg">
-      <h2 className="text-2xl font-bold text-white mb-6">Create Payment Intent</h2>
+    <Card variant="elevated">
+      <CardHeader
+        title="Create Intent"
+        description="Set up a conditional payment"
+      />
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Amount */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Amount
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            value={formData.amount}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                amount: e.target.value,
-              })
-            }
-            placeholder="0.00"
-            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            disabled={isPending}
-          />
-          {errors.amount && (
-            <p className="text-red-400 text-sm mt-1">{errors.amount}</p>
-          )}
-        </div>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Amount & Currency */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <Input
+              label="Amount"
+              type="number"
+              step="0.000001"
+              min="0"
+              value={formData.amount}
+              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              placeholder="0.00"
+              error={errors.amount}
+              disabled={createIntent.isPending}
+            />
+          </div>
 
-        {/* Currency */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Currency
-          </label>
-          <select
+          <Select
+            label="Currency"
             value={formData.currency}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                currency: e.target.value,
-              })
-            }
-            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            disabled={isPending}
-          >
-            <option value="WCRO">WCRO</option>
-            <option value="USDC">USDC</option>
-            <option value="USDT">USDT</option>
-          </select>
+            onChange={(e) => setFormData({ ...formData, currency: e.target.value as Currency })}
+            options={CURRENCIES}
+            disabled={createIntent.isPending}
+          />
         </div>
 
         {/* Recipient */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Recipient Address
-          </label>
-          <input
-            type="text"
-            value={formData.recipient}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                recipient: e.target.value,
-              })
-            }
-            placeholder="0x..."
-            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            disabled={isPending}
-          />
-          {errors.recipient && (
-            <p className="text-red-400 text-sm mt-1">{errors.recipient}</p>
-          )}
-        </div>
+        <Input
+          label="Recipient Address"
+          type="text"
+          value={formData.recipient}
+          onChange={(e) => setFormData({ ...formData, recipient: e.target.value })}
+          placeholder="0x..."
+          error={errors.recipient}
+          disabled={createIntent.isPending}
+          className="font-mono"
+        />
 
         {/* Condition Type */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Execution Condition
-          </label>
-          <select
-            value={formData.condition.type}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                condition: {
-                  ...formData.condition,
-                  type: e.target.value as 'manual' | 'price-below',
-                },
-              })
-            }
-            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            disabled={isPending}
-          >
-            <option value="manual">Manual Trigger</option>
-            <option value="price-below">Price Below Threshold</option>
-          </select>
-        </div>
+        <Select
+          label="Execution Condition"
+          value={formData.condition.type}
+          onChange={(e) =>
+            setFormData({
+              ...formData,
+              condition: {
+                ...formData.condition,
+                type: e.target.value as ConditionType,
+                value: e.target.value === 'manual' ? '' : formData.condition.value,
+              },
+            })
+          }
+          options={CONDITION_TYPES}
+          disabled={createIntent.isPending}
+        />
 
         {/* Condition Value */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            {formData.condition.type === 'price-below' ? 'Price Threshold' : 'Condition Value'}
-          </label>
-          <input
+        {formData.condition.type === 'price-below' && (
+          <Input
+            label="Price Threshold (USD)"
             type="number"
             step="0.01"
+            min="0"
             value={formData.condition.value}
             onChange={(e) =>
               setFormData({
                 ...formData,
-                condition: {
-                  ...formData.condition,
-                  value: e.target.value,
-                },
+                condition: { ...formData.condition, value: e.target.value },
               })
             }
-            placeholder="0.00"
-            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            disabled={isPending}
+            placeholder="Enter price threshold"
+            error={errors.conditionValue}
+            hint="Payment executes when price drops below this value"
+            disabled={createIntent.isPending}
           />
-          {errors.conditionValue && (
-            <p className="text-red-400 text-sm mt-1">{errors.conditionValue}</p>
-          )}
-        </div>
+        )}
 
         {/* Error Message */}
-        {error && (
-          <div className="p-4 bg-red-900/20 border border-red-700 rounded-lg text-red-300 text-sm">
-            {error instanceof Error ? error.message : 'Failed to create intent'}
+        {createIntent.error && (
+          <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+            <p className="text-sm text-red-400">
+              {createIntent.error instanceof Error ? createIntent.error.message : 'Failed to create intent'}
+            </p>
           </div>
         )}
 
         {/* Success Message */}
-        {isSuccess && (
-          <div className="p-4 bg-green-900/20 border border-green-700 rounded-lg text-green-300 text-sm">
-            Intent created successfully!
+        {createdIntent && (
+          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 animate-fade-in">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-emerald-400 mb-1">Intent Created</p>
+                <p className="text-sm text-slate-400 mb-3">
+                  {createdIntent.amount} {createdIntent.currency} payment ready
+                </p>
+                <div className="flex items-center gap-4">
+                  <Link
+                    href={`/dashboard/intents/${createdIntent.intentId}`}
+                    className="text-sm text-brand-400 hover:text-brand-300 font-medium transition-colors"
+                  >
+                    View Details
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="text-sm text-slate-500 hover:text-slate-400 transition-colors"
+                  >
+                    Create Another
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Submit Button */}
-        <button
+        {/* Submit */}
+        <Button
           type="submit"
-          disabled={isPending}
-          className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-blue-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          loading={createIntent.isPending}
+          fullWidth
+          size="lg"
         >
-          {isPending ? 'Creating Intent...' : 'Create Intent'}
-        </button>
+          Create Intent
+        </Button>
       </form>
-    </div>
+    </Card>
   );
 }
