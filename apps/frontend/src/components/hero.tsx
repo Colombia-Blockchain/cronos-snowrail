@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 export function Hero() {
@@ -10,58 +11,103 @@ export function Hero() {
   }, []);
 
   return (
-    <div className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-blue-900/40 to-slate-900 min-h-screen flex items-center justify-center">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cyan-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-surface-950">
+      {/* Background effects */}
+      <div className="absolute inset-0 bg-mesh-gradient pointer-events-none" />
+
+      {/* Floating orbs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-500/[0.07] rounded-full blur-[100px] animate-float" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent-500/[0.05] rounded-full blur-[100px] animate-float" style={{ animationDelay: '-3s' }} />
       </div>
 
+      {/* Grid pattern overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_70%)]" />
+
       {/* Content */}
-      <div className={`relative z-10 text-center px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-10'}`}>
-        <div className="mb-6">
-          <span className="inline-block px-4 py-2 bg-blue-500/20 border border-blue-400/50 rounded-full text-blue-300 text-sm font-semibold tracking-wider">
-            CRONOS X402 TREASURY
-          </span>
+      <div
+        className={`
+          relative z-10 max-w-5xl mx-auto px-6 text-center
+          transition-all duration-1000 ease-out
+          ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}
+        `}
+      >
+        {/* Badge */}
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 rounded-full bg-white/[0.04] border border-white/[0.08] animate-fade-in">
+          <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse-subtle" />
+          <span className="text-sm font-medium text-slate-300">Cronos X402 Treasury Protocol</span>
         </div>
 
-        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent leading-tight">
-          Snow Rail
+        {/* Headline */}
+        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-semibold text-white tracking-tight mb-6">
+          Autonomous Treasury
+          <br />
+          <span className="text-brand-400">Powered by AI</span>
         </h1>
 
-        <p className="text-xl sm:text-2xl text-gray-300 mb-6 leading-relaxed">
-          Autonomous Agentic Treasury powered by AI decision-making
+        {/* Subheadline */}
+        <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+          Create conditional payment intents that execute automatically
+          based on intelligent agent evaluation and market conditions.
         </p>
 
-        <p className="text-lg text-gray-400 mb-12 max-w-2xl mx-auto">
-          Intelligent asset management on Cronos blockchain with advanced agent orchestration
-        </p>
+        {/* CTAs */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+          <Link
+            href="/dashboard"
+            className="
+              group relative inline-flex items-center gap-2 px-8 py-3.5
+              bg-brand-500 text-white font-medium rounded-xl
+              hover:bg-brand-400 transition-all duration-300
+              shadow-lg shadow-brand-500/25 hover:shadow-brand-500/40
+            "
+          >
+            Open Dashboard
+            <svg
+              className="w-4 h-4 group-hover:translate-x-0.5 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+          </Link>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <button className="px-8 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-105">
-            Get Started
-          </button>
-          <button className="px-8 py-3 border border-blue-400 text-blue-300 font-semibold rounded-lg hover:bg-blue-500/10 transition-all duration-300">
-            Learn More
-          </button>
+          <Link
+            href="/dashboard/mixer"
+            className="
+              inline-flex items-center gap-2 px-8 py-3.5
+              bg-white/[0.04] text-slate-200 font-medium rounded-xl
+              border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/[0.12]
+              transition-all duration-300
+            "
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+            </svg>
+            ZK Privacy Mixer
+          </Link>
         </div>
 
         {/* Stats */}
-        <div className="mt-16 grid grid-cols-3 gap-8">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-blue-400 mb-2">100%</div>
-            <p className="text-gray-400 text-sm">Autonomous</p>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-cyan-400 mb-2">AI-Powered</div>
-            <p className="text-gray-400 text-sm">Decision Making</p>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-blue-400 mb-2">24/7</div>
-            <p className="text-gray-400 text-sm">Active Management</p>
-          </div>
+        <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto">
+          <StatCard value="100%" label="Autonomous" />
+          <StatCard value="AI" label="Agent Powered" />
+          <StatCard value="ZK" label="Privacy Layer" />
         </div>
       </div>
+
+      {/* Bottom fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-surface-950 to-transparent pointer-events-none" />
+    </section>
+  );
+}
+
+function StatCard({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="text-center">
+      <div className="text-3xl sm:text-4xl font-semibold text-white mb-1">{value}</div>
+      <div className="text-sm text-slate-500 uppercase tracking-wider">{label}</div>
     </div>
   );
 }

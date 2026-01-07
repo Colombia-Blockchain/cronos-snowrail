@@ -1,77 +1,130 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-
-interface DashboardCard {
-  label: string;
-  value: string;
-  change: string;
-  isPositive: boolean;
-}
-
 export function DashboardPreview() {
-  const [cards] = useState<DashboardCard[]>([
-    { label: 'Total Assets', value: '$2.5M', change: '+12.5%', isPositive: true },
-    { label: 'AI Decisions Today', value: '847', change: '+23%', isPositive: true },
-    { label: 'Success Rate', value: '94.2%', change: '+2.1%', isPositive: true },
-    { label: 'Gas Optimized', value: '$12.3K', change: '-45%', isPositive: true },
-  ]);
-
-  const [animateCards, setAnimateCards] = useState(false);
-
-  useEffect(() => {
-    setAnimateCards(true);
-  }, []);
-
   return (
-    <section className="py-24 bg-gradient-to-b from-slate-950 via-blue-950/30 to-slate-900 relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
-      </div>
+    <section className="py-24 bg-surface-950 relative overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 bg-mesh-gradient-dark pointer-events-none" />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative max-w-6xl mx-auto px-6">
+        {/* Header */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-            Live Treasury Dashboard
+          <h2 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mb-4">
+            How It Works
           </h2>
-          <p className="text-xl text-gray-400">
-            Real-time metrics and AI-powered insights
+          <p className="text-lg text-slate-400 max-w-xl mx-auto">
+            Three simple steps to autonomous treasury management
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          {cards.map((card, index) => (
-            <div
-              key={index}
-              className={`p-6 bg-gradient-to-br from-gray-800 via-gray-850 to-gray-900 border border-gray-700 rounded-lg transition-all duration-500 ${
-                animateCards ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-10'
-              }`}
-              style={{ transitionDelay: `${index * 100}ms` }}
-            >
-              <p className="text-gray-400 text-sm mb-2">{card.label}</p>
-              <p className="text-3xl font-bold text-white mb-3">{card.value}</p>
-              <p className={`text-sm font-semibold ${card.isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                {card.change} from last 24h
-              </p>
-            </div>
-          ))}
+        {/* Steps */}
+        <div className="grid md:grid-cols-3 gap-8">
+          <StepCard
+            number="01"
+            title="Create Intent"
+            description="Define payment conditions like price thresholds, time triggers, or manual approval."
+            icon={<CreateIcon />}
+          />
+          <StepCard
+            number="02"
+            title="Fund Intent"
+            description="Deposit the payment amount. Your funds stay secure until conditions are met."
+            icon={<FundIcon />}
+          />
+          <StepCard
+            number="03"
+            title="Auto Execute"
+            description="AI agents monitor conditions and execute payments when criteria are satisfied."
+            icon={<ExecuteIcon />}
+          />
         </div>
 
-        {/* Chart Preview */}
-        <div className="p-8 bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-lg">
-          <h3 className="text-xl font-bold text-white mb-6">Performance Chart</h3>
-          <div className="h-64 flex items-end justify-around gap-2 bg-gradient-to-t from-blue-500/10 to-transparent rounded p-4">
-            {[60, 75, 45, 85, 65, 95, 70, 80].map((height, i) => (
-              <div
-                key={i}
-                className="flex-1 bg-gradient-to-t from-blue-500 to-cyan-400 rounded-t opacity-80 hover:opacity-100 transition-opacity"
-                style={{ height: `${height}%` }}
-              />
-            ))}
+        {/* Visual Flow */}
+        <div className="mt-16 relative">
+          <div className="absolute top-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-500/30 to-transparent hidden md:block" />
+
+          <div className="flex justify-between items-center max-w-4xl mx-auto">
+            <FlowNode label="Deposit" active />
+            <FlowConnector />
+            <FlowNode label="Conditions Met" />
+            <FlowConnector />
+            <FlowNode label="Payment Sent" />
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+interface StepCardProps {
+  number: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+}
+
+function StepCard({ number, title, description, icon }: StepCardProps) {
+  return (
+    <div className="relative p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] hover:border-white/[0.1] transition-all duration-300">
+      {/* Number badge */}
+      <div className="absolute -top-3 -left-3 w-8 h-8 rounded-lg bg-brand-500 text-white text-sm font-semibold flex items-center justify-center">
+        {number}
+      </div>
+
+      <div className="w-14 h-14 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-5 text-brand-400">
+        {icon}
+      </div>
+
+      <h3 className="text-lg font-medium text-white mb-2">{title}</h3>
+      <p className="text-sm text-slate-400 leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+function FlowNode({ label, active = false }: { label: string; active?: boolean }) {
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className={`
+        w-4 h-4 rounded-full
+        ${active ? 'bg-brand-400 shadow-lg shadow-brand-400/50' : 'bg-white/10 border border-white/20'}
+      `} />
+      <span className="text-xs text-slate-500">{label}</span>
+    </div>
+  );
+}
+
+function FlowConnector() {
+  return (
+    <div className="hidden md:flex items-center flex-1 px-4">
+      <div className="h-px flex-1 bg-white/10" />
+      <svg className="w-3 h-3 text-white/20 mx-1" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+      </svg>
+      <div className="h-px flex-1 bg-white/10" />
+    </div>
+  );
+}
+
+function CreateIcon() {
+  return (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  );
+}
+
+function FundIcon() {
+  return (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+    </svg>
+  );
+}
+
+function ExecuteIcon() {
+  return (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
   );
 }
