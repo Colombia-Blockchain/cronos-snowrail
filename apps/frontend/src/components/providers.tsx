@@ -4,6 +4,7 @@ import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RainbowKitProvider, darkTheme, AvatarComponent } from '@rainbow-me/rainbowkit';
 import { config } from '../../wagmi.config';
+import { ToastProvider } from '@/components/ui';
 import '@rainbow-me/rainbowkit/styles.css';
 import '../styles/rainbowkit-overrides.css';
 
@@ -40,7 +41,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           theme={darkTheme()}
           avatar={CustomAvatar}
         >
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

@@ -140,6 +140,69 @@ export const getTreasuryStatusTool: MCPTool = {
 };
 
 /**
+ * Tool: verify_wallet
+ * Check if a wallet address is verified for receiving payments
+ */
+export const verifyWalletTool: MCPTool = {
+  name: 'verify_wallet',
+  description:
+    'Check if a wallet address is verified and eligible to receive payments. ' +
+    'Verification status is checked against the configured verification provider (Cronos Verify or mock). ' +
+    'Returns verification status and provider information.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      address: {
+        type: 'string',
+        description: 'Ethereum wallet address to verify (0x format)',
+        pattern: '^0x[a-fA-F0-9]{40}$',
+      },
+    },
+    required: ['address'],
+  },
+};
+
+/**
+ * Tool: get_verification_status
+ * Get detailed verification information for a wallet
+ */
+export const getVerificationStatusTool: MCPTool = {
+  name: 'get_verification_status',
+  description:
+    'Get detailed verification status for a wallet address. ' +
+    'Returns whether the address is verified, which provider was used, ' +
+    'and whether ZK verification is currently enabled.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      address: {
+        type: 'string',
+        description: 'Ethereum wallet address to check (0x format)',
+        pattern: '^0x[a-fA-F0-9]{40}$',
+      },
+    },
+    required: ['address'],
+  },
+};
+
+/**
+ * Tool: get_zk_status
+ * Get the current status of ZK services
+ */
+export const getZKStatusTool: MCPTool = {
+  name: 'get_zk_status',
+  description:
+    'Get the current status of ZK (Zero Knowledge) services. ' +
+    'Returns whether ZK is initialized, the active providers (verify and ZK proof), ' +
+    'health status, and supported circuits.',
+  inputSchema: {
+    type: 'object',
+    properties: {},
+    required: [],
+  },
+};
+
+/**
  * All available MCP tools
  */
 export const allTools: MCPTool[] = [
@@ -148,6 +211,9 @@ export const allTools: MCPTool[] = [
   getPaymentIntentTool,
   triggerAgentTool,
   getTreasuryStatusTool,
+  verifyWalletTool,
+  getVerificationStatusTool,
+  getZKStatusTool,
 ];
 
 /**
@@ -159,4 +225,7 @@ export const toolsByName: Record<string, MCPTool> = {
   get_payment_intent: getPaymentIntentTool,
   trigger_agent: triggerAgentTool,
   get_treasury_status: getTreasuryStatusTool,
+  verify_wallet: verifyWalletTool,
+  get_verification_status: getVerificationStatusTool,
+  get_zk_status: getZKStatusTool,
 };

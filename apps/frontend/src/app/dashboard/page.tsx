@@ -5,29 +5,58 @@ import { IntentList } from '@/components/intent-list';
 
 export default function Dashboard() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950/30 via-slate-900/20 to-slate-950/30 py-0 px-6 sm:px-8 lg:px-12 xl:px-16">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-3">
-            Treasury Management
-          </h1>
-          <p className="text-gray-400 text-lg">
-            Create and manage autonomous payment intents with AI-powered decision making
-          </p>
-        </div>
+    <div className="min-h-screen">
+      {/* Background pattern */}
+      <div className="fixed inset-0 bg-gradient-to-br from-surface-800 via-surface-900 to-surface-950 pointer-events-none" />
+      <div className="fixed inset-0 bg-mesh-gradient-dark pointer-events-none" />
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Form Section */}
-          <div className="lg:col-span-1">
-            <CreateIntentForm />
-          </div>
+      <div className="relative">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          {/* Header */}
+          <header className="mb-10 animate-fade-in">
+            <div className="flex items-start justify-between">
+              <div>
+                <h1 className="text-3xl font-semibold text-white tracking-tight mb-2">
+                  Treasury Management
+                </h1>
+                <p className="text-slate-400 text-base max-w-xl">
+                  Create and manage autonomous payment intents with AI-powered condition evaluation
+                </p>
+              </div>
 
-          {/* Intent List Section */}
-          <div className="lg:col-span-2">
-            <IntentList />
+              {/* Quick stats placeholder */}
+              <div className="hidden lg:flex items-center gap-6">
+                <QuickStat label="Active Intents" value="—" />
+                <QuickStat label="Total Volume" value="—" />
+              </div>
+            </div>
+          </header>
+
+          {/* Main Content */}
+          <div className="grid lg:grid-cols-12 gap-8">
+            {/* Sidebar - Create Form */}
+            <aside className="lg:col-span-4 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+              <div className="lg:sticky lg:top-24">
+                <CreateIntentForm />
+              </div>
+            </aside>
+
+            {/* Main - Intent List */}
+            <main className="lg:col-span-8 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+              <IntentList />
+            </main>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function QuickStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="text-right">
+      <p className="text-2xl font-semibold text-white tabular-nums">{value}</p>
+      <p className="text-xs text-slate-500 uppercase tracking-wider">{label}</p>
     </div>
   );
 }

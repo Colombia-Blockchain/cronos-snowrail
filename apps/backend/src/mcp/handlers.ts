@@ -12,6 +12,7 @@ import { getWalletService } from '../services/wallet-service';
 import { Orchestrator } from '../x402/orchestrator';
 import { decodeCustomError } from '../utils/error-decoder';
 import { PaymentIntent } from '@cronos-x402/shared-types';
+import { isZKInitialized, getVerifyProvider, getZKStatus } from '../zk';
 
 export interface MCPToolResult {
   content: Array<{
@@ -314,6 +315,105 @@ export const handleGetTreasuryStatus: MCPToolHandler = async (_args, logger) => 
 };
 
 /**
+ * Handler: verify_wallet
+ */
+export const handleVerifyWallet: MCPToolHandler = async (args, logger) => {
+  logger.info({ args }, '[MCP] verify_wallet called');
+
+  const { address } = args as { address: string };
+
+  if (!address) {
+    return errorResult('address is required');
+  }
+
+  if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    return errorResult('Invalid address format. Must be 0x followed by 40 hex characters.');
+  }
+
+  try {
+    if (!isZKInitialized()) {
+      return errorResult('ZK services not initialized');
+    }
+
+    const verifyProvider = getVerifyProvider();
+    const isVerified = await verifyProvider.isVerified(address);
+
+    return successResult({
+      message: isVerified ? 'Wallet is verified' : 'Wallet is not verified',
+      address,
+      verified: isVerified,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error({ error: errorMessage }, '[MCP] Failed to verify wallet');
+    return errorResult('Failed to verify wallet', errorMessage);
+  }
+};
+
+/**
+ * Handler: get_verification_status
+ */
+export const handleGetVerificationStatus: MCPToolHandler = async (args, logger) => {
+  logger.info({ args }, '[MCP] get_verification_status called');
+
+  const { address } = args as { address: string };
+
+  if (!address) {
+    return errorResult('address is required');
+  }
+
+  if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    return errorResult('Invalid address format. Must be 0x followed by 40 hex characters.');
+  }
+
+  try {
+    if (!isZKInitialized()) {
+      return successResult({
+        message: 'ZK services not initialized',
+        address,
+        verified: false,
+        zkInitialized: false,
+      });
+    }
+
+    const verifyProvider = getVerifyProvider();
+    const isVerified = await verifyProvider.isVerified(address);
+
+    return successResult({
+      message: 'Verification status retrieved',
+      address,
+      verified: isVerified,
+      zkInitialized: true,
+      requireVerification: process.env.REQUIRE_VERIFICATION === 'true',
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error({ error: errorMessage }, '[MCP] Failed to get verification status');
+    return errorResult('Failed to get verification status', errorMessage);
+  }
+};
+
+/**
+ * Handler: get_zk_status
+ */
+export const handleGetZKStatus: MCPToolHandler = async (_args, logger) => {
+  logger.info('[MCP] get_zk_status called');
+
+  try {
+    const zkStatus = getZKStatus();
+
+    return successResult({
+      message: 'ZK status retrieved',
+      status: zkStatus,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error({ error: errorMessage }, '[MCP] Failed to get ZK status');
+    return errorResult('Failed to get ZK status', errorMessage);
+  }
+};
+
+/**
  * Handler registry - maps tool names to handlers
  */
 export const toolHandlers: Record<string, MCPToolHandler> = {
@@ -322,6 +422,9 @@ export const toolHandlers: Record<string, MCPToolHandler> = {
   get_payment_intent: handleGetPaymentIntent,
   trigger_agent: handleTriggerAgent,
   get_treasury_status: handleGetTreasuryStatus,
+  verify_wallet: handleVerifyWallet,
+  get_verification_status: handleGetVerificationStatus,
+  get_zk_status: handleGetZKStatus,
 };
 
 /**

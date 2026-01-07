@@ -5,6 +5,7 @@ import { getWalletService } from '../services/wallet-service';
 import { generateIntentHash, computeEIP712Digest } from '../utils/crypto';
 import { decodeCustomError } from '../utils/error-decoder';
 import { AgentDecisionWithZK } from '../agent/agent';
+import { isZKInitialized, getVerifyProvider } from '../zk';
 
 // Settlement Contract ABI - minimal interface for executeSettlement
 const SETTLEMENT_CONTRACT_ABI = [
@@ -34,6 +35,8 @@ const SETTLEMENT_CONTRACT_ABI = [
 ];
 
 export class Orchestrator {
+  private requireVerification = process.env.REQUIRE_VERIFICATION === 'true';
+
   constructor(private logger: FastifyInstance['log']) {}
 
   /**
@@ -76,6 +79,25 @@ export class Orchestrator {
           verified: zkDecision.verificationStatus.verified,
         },
         '[Orchestrator] Recipient verification status'
+      );
+    }
+
+    // Verify recipient if required (additional security gate)
+    if (this.requireVerification && isZKInitialized()) {
+      const verifyProvider = getVerifyProvider();
+      const isVerified = await verifyProvider.isVerified(intent.recipient);
+
+      if (!isVerified) {
+        this.logger.warn(
+          { intentId: intent.intentId, recipient: intent.recipient },
+          '[Orchestrator] Recipient not verified - blocking execution'
+        );
+        throw new Error('Recipient wallet is not verified');
+      }
+
+      this.logger.info(
+        { intentId: intent.intentId, recipient: intent.recipient },
+        '[Orchestrator] Recipient verification passed'
       );
     }
 

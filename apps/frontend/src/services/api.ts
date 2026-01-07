@@ -1,67 +1,72 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+/**
+ * Legacy API module
+ * @deprecated Use individual services from '@/services' instead
+ *
+ * This file is kept for backwards compatibility with existing components.
+ * New code should import from '@/services' directly:
+ *
+ * import { createIntent, listIntents, triggerAgentForIntent } from '@/services';
+ */
 
-export interface CreateIntentRequest {
-  amount: string;
-  currency: string;
-  recipient: string;
-  condition: {
-    type: 'manual' | 'price-below';
-    value: string;
-  };
-}
+import { triggerAgentForIntent } from './agent-service';
+import type { ApiResponse, TriggerAgentResponse } from '@cronos-x402/shared-types';
 
-export interface PaymentIntent {
-  intentId: string;
-  amount: string;
-  currency: string;
-  recipient: string;
-  condition: { type: string; value: string };
-  status: 'pending' | 'executed' | 'failed';
-  createdAt: string;
-  executedTxHash?: string;
-}
+// Re-export everything from the new services for backwards compatibility
+export {
+  // Intent functions
+  createIntent,
+  listIntents,
+  getIntent,
+  prepareIntentDeposit,
+  confirmIntentDeposit,
+  executeIntent,
+  // Mixer functions
+  getMixerInfo,
+  generateNote,
+  prepareMixerDeposit,
+  confirmMixerDeposit,
+  prepareMixerWithdraw,
+  simulateMixerWithdraw,
+  // Agent functions
+  triggerAgentForIntent,
+  // API client
+  api,
+  ApiError,
+  getApiBaseUrl,
+} from './index';
 
-export async function createIntent(data: CreateIntentRequest): Promise<PaymentIntent> {
-  const response = await fetch(`${API_URL}/api/intents`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
+// Re-export types
+export type {
+  ApiResponse,
+  PaymentIntent,
+  CreateIntentRequest,
+  AgentDecision,
+  DepositNote,
+  MixerInfo,
+  Currency,
+} from './index';
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to create intent');
+/**
+ * @deprecated Use `listIntents` instead
+ */
+export { listIntents as fetchIntents } from './index';
+
+/**
+ * Legacy triggerAgent function that accepts a string intentId
+ * @deprecated Use `triggerAgentForIntent` from '@/services' instead
+ */
+export async function triggerAgent(
+  intentId: string
+): Promise<{ txHash?: string; reason?: string }> {
+  const response: ApiResponse<TriggerAgentResponse> = await triggerAgentForIntent(intentId);
+
+  if (response.status === 'success' && response.data) {
+    return { txHash: response.data.txHash };
   }
 
-  const result = await response.json();
-  return result.data;
-}
-
-export async function fetchIntents(): Promise<PaymentIntent[]> {
-  const response = await fetch(`${API_URL}/api/intents`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch intents');
-  }
-  const result = await response.json();
-  return result.data || [];
-}
-
-export async function triggerAgent(intentId: string): Promise<{ txHash?: string; reason?: string }> {
-  const response = await fetch(`${API_URL}/api/agent/trigger`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ intentId }),
-  });
-
-  const result = await response.json();
-
-  if (result.status === 'success') {
-    return { txHash: result.data?.txHash };
+  if (response.status === 'warning') {
+    return { reason: response.message };
   }
 
-  if (result.status === 'warning') {
-    return { reason: result.message };
-  }
-
-  throw new Error(result.message || 'Failed to trigger agent');
+  return { reason: response.message };
 }
