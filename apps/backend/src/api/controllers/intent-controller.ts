@@ -53,10 +53,13 @@ export async function createIntent(
         errors.push("condition.type must be 'manual' or 'price-below'");
       }
 
-      if (!condition.value) {
-        errors.push("condition.value is required");
-      } else if (condition.type === "price-below" && isNaN(Number(condition.value))) {
-        errors.push("condition.value must be a valid number for price-below type");
+      // condition.value is only required for price-below type
+      if (condition.type === "price-below") {
+        if (!condition.value) {
+          errors.push("condition.value is required for price-below type");
+        } else if (isNaN(Number(condition.value))) {
+          errors.push("condition.value must be a valid number for price-below type");
+        }
       }
     }
 
@@ -81,7 +84,7 @@ export async function createIntent(
       recipient: recipient as string,
       condition: {
         type: condition!.type as "manual" | "price-below",
-        value: condition!.value as string,
+        value: condition!.value || "",
       },
     });
 
