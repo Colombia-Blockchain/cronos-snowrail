@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import dotenv from 'dotenv';
+import path from 'path';
 import { showBanner } from './utils/banner';
 import { intentRoutes } from './api/routes/intents';
 import { agentRoutes } from './api/routes/agent';
@@ -14,7 +15,7 @@ import { initializeMixerService } from './services/mixer-service';
 import { mcpPlugin } from './mcp';
 import { initializeZKServices, getZKStatus } from './zk';
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 interface ApiResponse<T = Record<string, unknown> | null> {
   status: 'success' | 'warning' | 'error';
