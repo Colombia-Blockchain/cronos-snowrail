@@ -24,7 +24,7 @@ export function MixerWithdraw() {
   const { data: mixerInfo } = useMixerInfo();
   const simulateWithdraw = useSimulateWithdraw();
   const mixerWithdraw = useMixerWithdraw();
-  const { sendTransaction, data: txHash } = useSendTransaction();
+  const { sendTransaction, data: txHash, error: sendError, reset: resetSend } = useSendTransaction();
   const { isLoading: isConfirmingTx, isSuccess: isTxConfirmed } = useWaitForTransactionReceipt({
     hash: txHash,
   });
@@ -122,6 +122,17 @@ export function MixerWithdraw() {
 
   // Track if toast was already shown for this tx
   const toastShownRef = useRef<string | null>(null);
+  const errorShownRef = useRef<boolean>(false);
+
+  // Handle wallet rejection/error
+  useEffect(() => {
+    if (sendError && step === 'signing' && !errorShownRef.current) {
+      errorShownRef.current = true;
+      setErrorMessage(sendError.message || 'User rejected the transaction');
+      setStep('error');
+      toast.error('Transaction rejected', sendError.message || 'User rejected the transaction');
+    }
+  }, [sendError, step, toast]);
 
   // Watch for transaction confirmation
   useEffect(() => {
@@ -142,6 +153,9 @@ export function MixerWithdraw() {
     setCompletedTxHash(null);
     simulateWithdraw.reset();
     mixerWithdraw.reset();
+    resetSend();
+    toastShownRef.current = null;
+    errorShownRef.current = false;
   };
 
   const useConnectedAddress = () => {

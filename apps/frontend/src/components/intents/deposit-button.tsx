@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDepositIntent, useConfirmDeposit } from '@/hooks';
 import { Spinner, useToast } from '@/components/ui';
 import { useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
@@ -49,9 +49,13 @@ export function DepositButton({ intentId, amount, currency, disabled }: DepositB
     }
   };
 
+  // Track shown toasts to prevent duplicates
+  const toastShownRef = useRef<{ error?: boolean; sent?: boolean; confirmed?: boolean }>({});
+
   // Handle send error
   useEffect(() => {
-    if (sendError) {
+    if (sendError && !toastShownRef.current.error) {
+      toastShownRef.current.error = true;
       setStep('error');
       toast.error('Transaction rejected', sendError.message || 'User rejected the transaction');
     }
@@ -59,15 +63,20 @@ export function DepositButton({ intentId, amount, currency, disabled }: DepositB
 
   // When TX is sent, wait for confirmation
   useEffect(() => {
-    if (txHash && txPending) {
+    if (txHash && txPending && !toastShownRef.current.sent) {
+      toastShownRef.current.sent = true;
       setStep('confirming');
       toast.info('Transaction sent', 'Waiting for confirmation...');
     }
   }, [txHash, txPending, toast]);
 
+  // Track if confirmation mutation was already called
+  const confirmCalledRef = useRef<string | null>(null);
+
   // When TX is confirmed, call confirm-deposit endpoint
   useEffect(() => {
-    if (txConfirmed && txHash) {
+    if (txConfirmed && txHash && confirmCalledRef.current !== txHash) {
+      confirmCalledRef.current = txHash;
       confirmDeposit.mutate(
         { intentId, txHash },
         {

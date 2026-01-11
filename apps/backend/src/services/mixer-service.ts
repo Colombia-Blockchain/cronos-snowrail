@@ -116,9 +116,30 @@ export class MixerService {
 
   /**
    * Record a deposit in the local Merkle tree
+   * Updates filledSubtrees to match contract behavior
    */
   recordDeposit(commitment: string, leafIndex: number, txHash: string): void {
-    // Ensure leaves array is large enough
+    // Update filledSubtrees like the contract does
+    let currentHash = commitment;
+    let currentIndex = leafIndex;
+
+    for (let i = 0; i < this.TREE_DEPTH; i++) {
+      if (currentIndex % 2 === 0) {
+        // Left child: store current hash for later
+        this.filledSubtrees[i] = currentHash;
+        currentHash = this._hashPair(currentHash, this.zeros[i]);
+      } else {
+        // Right child: pair with stored left sibling
+        currentHash = this._hashPair(this.filledSubtrees[i], currentHash);
+      }
+      currentIndex = Math.floor(currentIndex / 2);
+    }
+
+    // Update synced root
+    this.syncedRoot = currentHash;
+    this.nextLeafIndex = leafIndex + 1;
+
+    // Also update leaves array for backwards compatibility
     while (this.leaves.length <= leafIndex) {
       this.leaves.push(this.zeros[0]);
     }
@@ -131,11 +152,11 @@ export class MixerService {
   }
 
   /**
-   * Generate Merkle proof for a commitment
+   * Generate Merkle proof for a commitment using filledSubtrees
    */
   generateMerkleProof(leafIndex: number): MerkleProof {
-    if (leafIndex >= this.leaves.length) {
-      throw new Error('Leaf index out of bounds');
+    if (leafIndex >= this.nextLeafIndex) {
+      throw new Error(`Leaf index ${leafIndex} out of bounds (max: ${this.nextLeafIndex - 1})`);
     }
 
     const pathElements: string[] = [];
@@ -144,23 +165,44 @@ export class MixerService {
     let currentIndex = leafIndex;
 
     for (let level = 0; level < this.TREE_DEPTH; level++) {
-      const siblingIndex = currentIndex % 2 === 0 ? currentIndex + 1 : currentIndex - 1;
+      // Determine if we're left (0) or right (1) child
+      const isRightChild = currentIndex % 2 === 1;
+      pathIndices.push(isRightChild ? 1 : 0);
 
-      // Get sibling (or zero if doesn't exist)
-      const sibling = this._getNode(level, siblingIndex);
-      pathElements.push(sibling);
-      pathIndices.push(currentIndex % 2); // 0 = left, 1 = right
+      if (isRightChild) {
+        // We're right child, sibling is the filledSubtree at this level
+        pathElements.push(this.filledSubtrees[level]);
+      } else {
+        // We're left child, sibling is zero (or filledSubtree if exists)
+        // For leaves after us, use zero; for leaves before, use filledSubtree
+        const siblingIndex = currentIndex + 1;
+        if (siblingIndex < this.nextLeafIndex || (level > 0 && this._hasFilledSibling(level, currentIndex))) {
+          pathElements.push(this.filledSubtrees[level]);
+        } else {
+          pathElements.push(this.zeros[level]);
+        }
+      }
 
       currentIndex = Math.floor(currentIndex / 2);
     }
 
-    const root = this._computeRoot();
+    // Use synced root or compute from filledSubtrees
+    const root = this.syncedRoot || this._computeRootFromFilledSubtrees();
 
     return {
       root,
       pathElements,
       pathIndices,
     };
+  }
+
+  /**
+   * Check if there's a filled sibling at this level
+   */
+  private _hasFilledSibling(level: number, index: number): boolean {
+    // The sibling exists if there are enough leaves to fill it
+    const siblingFirstLeaf = (index + 1) * Math.pow(2, level);
+    return siblingFirstLeaf < this.nextLeafIndex;
   }
 
   /**
@@ -234,105 +276,116 @@ export class MixerService {
   }
 
   /**
-   * Sync local Merkle tree with on-chain deposits
-   * Fetches all Deposit events and rebuilds the tree
+   * Sync local Merkle tree with on-chain state
+   * Reads filledSubtrees directly from contract (fast, no event scanning)
    */
   async syncWithChain(contractAddress: string): Promise<void> {
     const rpcUrl = process.env.RPC_URL || 'https://evm-t3.cronos.org';
     const provider = new ethers.JsonRpcProvider(rpcUrl);
 
-    const contract = new ethers.Contract(contractAddress, MIXER_ABI, provider);
+    // Extended ABI to read filledSubtrees and zeros from contract
+    const extendedABI = [
+      ...MIXER_ABI,
+      'function filledSubtrees(uint256) view returns (bytes32)',
+      'function zeros(uint256) view returns (bytes32)',
+    ];
+    const contract = new ethers.Contract(contractAddress, extendedABI, provider);
 
-    // Get deposit count from contract
-    const depositCount = await contract.getDepositCount();
-    this.logger.info({ depositCount: Number(depositCount) }, '[MixerService] Fetching on-chain deposits');
+    // Get deposit count and on-chain root
+    const [depositCount, onChainRoot] = await Promise.all([
+      contract.getDepositCount(),
+      contract.getLastRoot(),
+    ]);
+
+    this.logger.info({ depositCount: Number(depositCount) }, '[MixerService] Syncing with chain');
 
     if (depositCount === 0n) {
       this.logger.info('[MixerService] No deposits to sync');
       return;
     }
 
-    // Query Deposit events in batches (RPC limits to 2000 blocks per query)
-    const currentBlock = await provider.getBlockNumber();
-    const BATCH_SIZE = 1000;
-    const filter = contract.filters.Deposit();
-    const allEvents: ethers.EventLog[] = [];
+    // Read filledSubtrees and zeros from contract sequentially
+    // (Cronos RPC limits batch size to 10)
+    const filledSubtrees: string[] = [];
+    const contractZeros: string[] = [];
 
-    // Start from a reasonable block (contract was deployed recently)
-    // We search backwards in batches until we find all deposits
-    let toBlock = currentBlock;
-    let fromBlock = Math.max(0, currentBlock - BATCH_SIZE);
-
-    while (allEvents.length < Number(depositCount) && fromBlock >= 0) {
-      try {
-        const events = await contract.queryFilter(filter, fromBlock, toBlock);
-        for (const event of events) {
-          if (event instanceof ethers.EventLog) {
-            allEvents.push(event);
-          }
-        }
-        this.logger.info(
-          { fromBlock, toBlock, found: events.length, total: allEvents.length },
-          '[MixerService] Fetched batch'
-        );
-      } catch {
-        // If batch is too large, reduce size
-        this.logger.warn({ fromBlock, toBlock }, '[MixerService] Batch query failed, trying smaller range');
-      }
-
-      // Move to earlier blocks
-      toBlock = fromBlock - 1;
-      fromBlock = Math.max(0, toBlock - BATCH_SIZE);
-
-      if (toBlock < 0) break;
+    for (let i = 0; i < this.TREE_DEPTH; i++) {
+      const [filled, zero] = await Promise.all([
+        contract.filledSubtrees(i),
+        contract.zeros(i),
+      ]);
+      filledSubtrees.push(filled);
+      contractZeros.push(zero);
     }
 
-    this.logger.info({ eventCount: allEvents.length }, '[MixerService] Found deposit events');
+    this.logger.info('[MixerService] Loaded filledSubtrees from contract');
 
-    // Sort by leafIndex and insert into tree
-    const deposits = allEvents
-      .map((log) => ({
-        commitment: log.args[0] as string,
-        leafIndex: Number(log.args[1]),
-        timestamp: Number(log.args[2]),
-      }))
-      .sort((a, b) => a.leafIndex - b.leafIndex);
+    // Store contract state
+    this.filledSubtrees = filledSubtrees as string[];
+    this.zeros = contractZeros as string[];
+    this.nextLeafIndex = Number(depositCount);
 
-    // Clear and rebuild tree
-    this.leaves = [];
-    for (const deposit of deposits) {
-      while (this.leaves.length < deposit.leafIndex) {
-        this.leaves.push(this.zeros[0]);
-      }
-      this.leaves[deposit.leafIndex] = deposit.commitment;
-    }
+    // Compute root using filledSubtrees (matches contract algorithm)
+    const computedRoot = this._computeRootFromFilledSubtrees();
 
-    // Verify our root matches on-chain
-    const localRoot = this._computeRoot();
-    const onChainRoot = await contract.getLastRoot();
-
-    if (localRoot === onChainRoot) {
+    if (computedRoot === onChainRoot) {
       this.logger.info(
-        { root: localRoot, deposits: deposits.length },
-        '[MixerService] Successfully synced with chain - roots match'
+        { root: computedRoot, deposits: Number(depositCount) },
+        '[MixerService] Successfully synced with chain'
       );
     } else {
       this.logger.warn(
-        { localRoot, onChainRoot },
-        '[MixerService] Root mismatch after sync - tree may be incomplete'
+        { computedRoot, onChainRoot },
+        '[MixerService] Root computation mismatch - using on-chain root'
       );
     }
+
+    // Mark as synced - we can generate proofs now
+    this.syncedRoot = onChainRoot;
   }
+
+  /**
+   * Compute root from filledSubtrees (matches contract logic exactly)
+   */
+  private _computeRootFromFilledSubtrees(): string {
+    if (this.nextLeafIndex === 0) {
+      return this._hashPair(this.zeros[this.TREE_DEPTH - 1], this.zeros[this.TREE_DEPTH - 1]);
+    }
+
+    // Trace path from last leaf to root
+    let currentIndex = this.nextLeafIndex - 1;
+    let currentHash = this.filledSubtrees[0];
+
+    for (let i = 0; i < this.TREE_DEPTH; i++) {
+      if (currentIndex % 2 === 0) {
+        // Left child: pair with zero on right
+        currentHash = this._hashPair(currentHash, this.zeros[i]);
+      } else {
+        // Right child: pair with filled subtree on left
+        currentHash = this._hashPair(this.filledSubtrees[i], currentHash);
+      }
+      currentIndex = Math.floor(currentIndex / 2);
+    }
+
+    return currentHash;
+  }
+
+  // Synced state from contract
+  private filledSubtrees: string[] = [];
+  private nextLeafIndex: number = 0;
+  private syncedRoot: string = '';
 
   // ============ Internal Functions ============
 
   private _initializeZeros(): void {
     let currentZero = ethers.ZeroHash;
     this.zeros.push(currentZero);
+    this.filledSubtrees.push(currentZero);
 
     for (let i = 1; i < this.TREE_DEPTH; i++) {
       currentZero = this._hashPair(currentZero, currentZero);
       this.zeros.push(currentZero);
+      this.filledSubtrees.push(currentZero);
     }
   }
 
