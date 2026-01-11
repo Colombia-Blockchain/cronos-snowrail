@@ -41,7 +41,6 @@ export async function apiRequest<T>(config: RequestConfig): Promise<ApiResponse<
   const url = `${API_BASE_URL}${endpoint}`;
 
   const requestHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...headers,
   };
 
@@ -50,7 +49,9 @@ export async function apiRequest<T>(config: RequestConfig): Promise<ApiResponse<
     headers: requestHeaders,
   };
 
+  // Only set Content-Type and body when there's actual data to send
   if (body && (method === 'POST' || method === 'PUT')) {
+    requestHeaders['Content-Type'] = 'application/json';
     requestInit.body = JSON.stringify(body);
   }
 
