@@ -1,7 +1,21 @@
 import type { Metadata } from "next";
+import { Outfit, Space_Grotesk } from "next/font/google"; // Import fonts
 import { Providers } from "../components/providers";
 import { Navbar } from "../components/navbar";
 import "../styles/globals.css";
+
+// Configure fonts
+const outfit = Outfit({ 
+  subsets: ["latin"], 
+  variable: '--font-outfit',
+  display: 'swap',
+});
+
+const spaceGrotesk = Space_Grotesk({ 
+  subsets: ["latin"], 
+  variable: '--font-space-grotesk',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: "Cronos x402 Agentic Treasury",
@@ -14,60 +28,30 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900/40 to-slate-950 text-white font-sans overflow-x-hidden">
+    <html lang="en" className={`${outfit.variable} ${spaceGrotesk.variable}`}>
+      <body className="min-h-screen bg-obsidian-950 font-sans text-white overflow-x-hidden selection:bg-brand-500/30 selection:text-brand-200">
+        
+        {/* Dynamic Background */}
         <div className="fixed inset-0 pointer-events-none z-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-950/5 to-transparent opacity-100"></div>
-          <div className="absolute top-1/4 right-1/4 w-[600px] h-[600px] bg-cyan-500/3 rounded-full blur-3xl" style={{animation: 'floatSmooth1 22s cubic-bezier(0.4, 0, 0.2, 1) infinite'}}></div>
-          <div className="absolute bottom-1/4 left-1/4 w-[550px] h-[550px] bg-blue-500/4 rounded-full blur-3xl" style={{animation: 'floatSmooth2 28s cubic-bezier(0.4, 0, 0.2, 1) infinite 7s'}}></div>
-          <div className="absolute top-1/3 left-1/3 w-[500px] h-[500px] bg-indigo-500/2 rounded-full blur-3xl" style={{animation: 'floatSmooth3 35s cubic-bezier(0.4, 0, 0.2, 1) infinite 14s'}}></div>
+          {/* Base gradient */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-obsidian-800 via-obsidian-950 to-obsidian-950 opacity-100"></div>
+          
+          {/* Floating Orbs - Refined for elegance */}
+          <div className="absolute top-[-10%] right-[-5%] w-[800px] h-[800px] bg-brand-600/10 rounded-full blur-[120px] mix-blend-screen animate-float" style={{ animationDuration: '25s' }}></div>
+          <div className="absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] bg-accent-600/10 rounded-full blur-[100px] mix-blend-screen animate-float" style={{ animationDuration: '30s', animationDelay: '5s' }}></div>
+          <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-electric-500/5 rounded-full blur-[80px] mix-blend-overlay animate-pulse-subtle"></div>
+          
+          {/* Noise Texture Overlay */}
+          <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
         </div>
-        <style>{`
-          @keyframes floatSmooth1 {
-            0%, 100% {
-              transform: translate(0px, 0px) scale(1);
-              opacity: 0.25;
-            }
-            33% {
-              transform: translate(40px, -30px) scale(1.08);
-              opacity: 0.30;
-            }
-            66% {
-              transform: translate(-30px, 40px) scale(0.95);
-              opacity: 0.28;
-            }
-          }
-          @keyframes floatSmooth2 {
-            0%, 100% {
-              transform: translate(0px, 0px) scale(1) rotate(0deg);
-              opacity: 0.28;
-            }
-            40% {
-              transform: translate(-50px, 35px) scale(1.05) rotate(2deg);
-              opacity: 0.32;
-            }
-            75% {
-              transform: translate(45px, -40px) scale(0.98) rotate(-2deg);
-              opacity: 0.30;
-            }
-          }
-          @keyframes floatSmooth3 {
-            0%, 100% {
-              transform: translate(0px, 0px) scale(1);
-              opacity: 0.20;
-            }
-            50% {
-              transform: translate(30px, 30px) scale(1.12);
-              opacity: 0.24;
-            }
-          }
-        `}</style>
-        <div className="relative z-10">
+
+        <div className="relative z-10 flex flex-col min-h-screen">
           <Providers>
             <Navbar />
-            <main className="pt-20 w-full">
+            <main className="flex-grow pt-24 px-4 sm:px-6 w-full max-w-[1600px] mx-auto">
               {children}
             </main>
+            {/* Optional Footer could go here */}
           </Providers>
         </div>
       </body>

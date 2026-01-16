@@ -89,42 +89,43 @@ function OpenIcon() {
 
 export function Features() {
   return (
-    <section className="py-24 bg-surface-950 relative">
+    <section className="py-24 relative overflow-hidden">
       {/* Subtle background */}
-      <div className="absolute inset-0 bg-mesh-gradient-dark pointer-events-none" />
-
-      <div className="relative max-w-6xl mx-auto px-6">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      
+      <div className="relative max-w-7xl mx-auto px-6">
         {/* Header */}
         <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mb-4">
+          <h2 className="text-4xl sm:text-5xl font-display font-bold text-white tracking-tight mb-6">
             Built for Modern Treasury
           </h2>
-          <p className="text-lg text-slate-400 max-w-xl mx-auto">
-            Combining AI automation with zero-knowledge privacy for autonomous asset management.
+          <p className="text-lg text-slate-400 max-w-xl mx-auto font-light">
+            Combining <span className="text-electric-300 font-medium">AI automation</span> with zero-knowledge privacy for autonomous asset management.
           </p>
         </div>
 
         {/* Features Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature, index) => (
             <div
               key={index}
               className="
-                group p-6 rounded-2xl
-                bg-white/[0.02] border border-white/[0.06]
-                hover:bg-white/[0.04] hover:border-white/[0.1]
+                group p-8 rounded-3xl
+                bg-obsidian-800/40 border border-white/[0.05]
+                backdrop-blur-sm
+                hover:bg-obsidian-800/60 hover:border-electric-500/30 hover:shadow-glow-sm hover:-translate-y-1
                 transition-all duration-300
                 animate-fade-in-up
               "
               style={{ animationDelay: `${index * 100}ms` }}
             >
-              <div className="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center mb-4 text-brand-400 group-hover:bg-brand-500/15 group-hover:border-brand-500/30 transition-all">
+              <div className="w-14 h-14 rounded-2xl bg-electric-500/10 border border-electric-500/20 flex items-center justify-center mb-6 text-electric-400 group-hover:bg-electric-500/20 group-hover:border-electric-500/40 group-hover:scale-110 transition-all duration-300">
                 {feature.icon}
               </div>
-              <h3 className="text-lg font-medium text-white mb-2 group-hover:text-brand-400 transition-colors">
+              <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-electric-300 transition-colors">
                 {feature.title}
               </h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
+              <p className="text-base text-slate-400 leading-relaxed group-hover:text-slate-300 transition-colors">
                 {feature.description}
               </p>
             </div>

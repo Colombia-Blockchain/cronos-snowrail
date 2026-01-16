@@ -18,17 +18,17 @@ const CustomAvatar: AvatarComponent = ({ address, ensImage, size }) => {
         width: size,
         height: size,
         borderRadius: '50%',
-        background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)',
+        background: 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        border: '2px solid rgba(59, 130, 246, 0.4)',
+        border: '2px solid rgba(14, 165, 233, 0.4)',
         fontSize: `${size / 2}px`,
         fontWeight: 'bold',
         color: 'white',
       }}
     >
-      {address.slice(0, 2).toUpperCase()}
+      {address ? address.slice(2, 4).toUpperCase() : '0x'}
     </div>
   );
 };
@@ -38,7 +38,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
-          theme={darkTheme()}
+          theme={darkTheme({
+            accentColor: '#0ea5e9', // Electric blue
+            accentColorForeground: 'white',
+            borderRadius: 'medium',
+            fontStack: 'system',
+            overlayBlur: 'small',
+          })}
           avatar={CustomAvatar}
         >
           <ToastProvider>

@@ -29,18 +29,19 @@ function Logo() {
   return (
     <Link href="/" className="flex items-center gap-3 group">
       <div className="relative">
-        <div className="w-9 h-9 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center group-hover:border-brand-500/40 transition-colors">
-          <svg className="w-5 h-5 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <div className="absolute inset-0 bg-electric-500/20 blur-md rounded-xl group-hover:bg-electric-400/30 transition-all duration-300"></div>
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-obsidian-800 to-obsidian-900 border border-white/10 flex items-center justify-center relative shadow-inner-light group-hover:border-electric-500/30 transition-all">
+          <svg className="w-5 h-5 text-electric-400 group-hover:text-electric-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
           </svg>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="text-lg font-semibold text-white tracking-tight">
+      <div className="flex flex-col">
+        <span className="text-lg font-display font-bold text-white tracking-tight leading-none group-hover:text-electric-200 transition-colors">
           Snow Rail
         </span>
-        <span className="text-[10px] font-medium text-slate-500 px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06]">
-          X402
+        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">
+          Agentic Treasury
         </span>
       </div>
     </Link>
@@ -52,13 +53,13 @@ export function Navbar() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50">
-      <div className="bg-surface-900/80 backdrop-blur-xl border-b border-white/[0.06]">
-        <div className="flex justify-between items-center max-w-7xl mx-auto w-full px-6 h-16">
-          <div className="flex items-center gap-8">
+      <div className="bg-obsidian-900/60 backdrop-blur-xl border-b border-white/[0.05] supports-[backdrop-filter]:bg-obsidian-900/40">
+        <div className="flex justify-between items-center max-w-[1600px] mx-auto w-full px-6 h-20">
+          <div className="flex items-center gap-10">
             <Logo />
 
             {/* Navigation Links */}
-            <div className="hidden sm:flex items-center gap-1">
+            <div className="hidden sm:flex items-center gap-1 bg-white/[0.03] p-1 rounded-xl border border-white/[0.04]">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href || pathname?.startsWith(link.href + '/');
                 const Icon = link.icon;
@@ -67,15 +68,18 @@ export function Navbar() {
                     key={link.href}
                     href={link.href}
                     className={`
-                      flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium
-                      transition-all duration-200
+                      flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+                      transition-all duration-300 relative overflow-hidden group
                       ${isActive
-                        ? 'bg-white/[0.08] text-white'
-                        : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                        ? 'text-white'
+                        : 'text-slate-400 hover:text-white'
                       }
                     `}
                   >
-                    <Icon className="w-4 h-4" />
+                    {isActive && (
+                      <div className="absolute inset-0 bg-white/[0.08] rounded-lg -z-10" />
+                    )}
+                    <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-electric-400' : 'text-slate-500 group-hover:text-electric-400'}`} />
                     {link.label}
                   </Link>
                 );
@@ -85,9 +89,12 @@ export function Navbar() {
 
           <div className="flex items-center gap-4">
             {/* Network indicator */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-subtle" />
-              <span className="text-xs font-medium text-slate-400">Cronos Testnet</span>
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-sm">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-xs font-semibold text-emerald-400 tracking-wide">CRONOS TESTNET</span>
             </div>
 
             <ConnectWalletButton />

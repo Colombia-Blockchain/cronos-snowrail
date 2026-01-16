@@ -1,6 +1,17 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 export function DashboardPreview() {
+  const [activeStep, setActiveStep] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveStep((prev) => (prev + 1) % 4); // 4 steps to allow a pause at the end
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <section className="py-24 bg-surface-950 relative overflow-hidden">
       {/* Background */}
@@ -9,10 +20,10 @@ export function DashboardPreview() {
       <div className="relative max-w-6xl mx-auto px-6">
         {/* Header */}
         <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mb-4">
+          <h2 className="text-4xl sm:text-5xl font-display font-bold text-white tracking-tight mb-4">
             How It Works
           </h2>
-          <p className="text-lg text-slate-400 max-w-xl mx-auto">
+          <p className="text-lg text-slate-400 max-w-xl mx-auto font-light">
             Three simple steps to autonomous treasury management
           </p>
         </div>
@@ -24,31 +35,56 @@ export function DashboardPreview() {
             title="Create Intent"
             description="Define payment conditions like price thresholds, time triggers, or manual approval."
             icon={<CreateIcon />}
+            isActive={activeStep === 0 || activeStep === 3}
           />
           <StepCard
             number="02"
             title="Fund Intent"
             description="Deposit the payment amount. Your funds stay secure until conditions are met."
             icon={<FundIcon />}
+            isActive={activeStep === 1}
           />
           <StepCard
             number="03"
             title="Auto Execute"
             description="AI agents monitor conditions and execute payments when criteria are satisfied."
             icon={<ExecuteIcon />}
+            isActive={activeStep === 2}
           />
         </div>
 
         {/* Visual Flow */}
-        <div className="mt-16 relative">
-          <div className="absolute top-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-500/30 to-transparent hidden md:block" />
+        <div className="mt-24 relative max-w-4xl mx-auto">
+          {/* Base Track */}
+          <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-obsidian-800 -translate-y-1/2 rounded-full hidden md:block" />
+          
+          {/* Progress Track */}
+          <div 
+            className="absolute top-1/2 left-4 h-0.5 bg-electric-500 -translate-y-1/2 rounded-full hidden md:block transition-all duration-[2000ms] ease-linear shadow-[0_0_10px_#0ea5e9]"
+            style={{ 
+              width: activeStep === 0 ? '0%' : activeStep === 1 ? '50%' : activeStep >= 2 ? '100%' : '0%',
+              opacity: activeStep === 3 ? 0 : 1
+            }}
+          />
 
-          <div className="flex justify-between items-center max-w-4xl mx-auto">
-            <FlowNode label="Deposit" active />
-            <FlowConnector />
-            <FlowNode label="Conditions Met" />
-            <FlowConnector />
-            <FlowNode label="Payment Sent" />
+          <div className="flex justify-between items-center relative z-10">
+            <FlowNode 
+              label="Deposit" 
+              active={activeStep >= 0} 
+              current={activeStep === 0}
+            />
+            <div className="hidden md:block flex-1" />
+            <FlowNode 
+              label="Conditions Met" 
+              active={activeStep >= 1} 
+              current={activeStep === 1}
+            />
+            <div className="hidden md:block flex-1" />
+            <FlowNode 
+              label="Payment Sent" 
+              active={activeStep >= 2} 
+              current={activeStep === 2}
+            />
           </div>
         </div>
       </div>
@@ -61,46 +97,87 @@ interface StepCardProps {
   title: string;
   description: string;
   icon: React.ReactNode;
+  isActive?: boolean;
 }
 
-function StepCard({ number, title, description, icon }: StepCardProps) {
+function StepCard({ number, title, description, icon, isActive }: StepCardProps) {
   return (
-    <div className="relative p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] hover:border-white/[0.1] transition-all duration-300">
+    <div 
+      className={`
+        relative p-8 rounded-3xl border transition-all duration-500
+        ${isActive 
+          ? 'bg-obsidian-800/80 border-electric-500/30 shadow-glow-md -translate-y-2' 
+          : 'bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04]'
+        }
+      `}
+    >
       {/* Number badge */}
-      <div className="absolute -top-3 -left-3 w-8 h-8 rounded-lg bg-brand-500 text-white text-sm font-semibold flex items-center justify-center">
+      <div 
+        className={`
+          absolute -top-4 -left-4 w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-lg transition-colors duration-500
+          ${isActive ? 'bg-electric-500 text-white shadow-electric-500/40' : 'bg-obsidian-800 border border-white/10 text-slate-500'}
+        `}
+      >
         {number}
       </div>
 
-      <div className="w-14 h-14 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-5 text-brand-400">
+      <div 
+        className={`
+          w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-colors duration-500
+          ${isActive 
+            ? 'bg-electric-500/20 text-electric-400 border border-electric-500/30' 
+            : 'bg-white/[0.04] border border-white/[0.08] text-slate-500'
+          }
+        `}
+      >
         {icon}
       </div>
 
-      <h3 className="text-lg font-medium text-white mb-2">{title}</h3>
-      <p className="text-sm text-slate-400 leading-relaxed">{description}</p>
+      <h3 className={`text-xl font-semibold mb-3 transition-colors duration-500 ${isActive ? 'text-white' : 'text-slate-300'}`}>
+        {title}
+      </h3>
+      <p className="text-base text-slate-400 leading-relaxed font-light">{description}</p>
     </div>
   );
 }
 
-function FlowNode({ label, active = false }: { label: string; active?: boolean }) {
+function FlowNode({ label, active, current }: { label: string; active?: boolean; current?: boolean }) {
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className={`
-        w-4 h-4 rounded-full
-        ${active ? 'bg-brand-400 shadow-lg shadow-brand-400/50' : 'bg-white/10 border border-white/20'}
-      `} />
-      <span className="text-xs text-slate-500">{label}</span>
-    </div>
-  );
-}
-
-function FlowConnector() {
-  return (
-    <div className="hidden md:flex items-center flex-1 px-4">
-      <div className="h-px flex-1 bg-white/10" />
-      <svg className="w-3 h-3 text-white/20 mx-1" fill="currentColor" viewBox="0 0 20 20">
-        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-      </svg>
-      <div className="h-px flex-1 bg-white/10" />
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative">
+        <div 
+          className={`
+            w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-500 z-10 relative bg-surface-950
+            ${active 
+              ? 'border-electric-500 bg-electric-900/20 shadow-glow-sm scale-110' 
+              : 'border-white/10 bg-obsidian-900'
+            }
+          `} 
+        >
+          <div 
+            className={`
+              w-3 h-3 rounded-full transition-all duration-500
+              ${active ? 'bg-electric-400 scale-100' : 'bg-white/10 scale-75'}
+              ${current ? 'animate-ping' : ''}
+            `} 
+          />
+        </div>
+        
+        {/* Ripple effect for current step */}
+        {current && (
+          <div className="absolute inset-0 rounded-full border border-electric-400/50 animate-ping opacity-75" />
+        )}
+      </div>
+      
+      <span 
+        className={`
+          text-sm font-medium tracking-wide transition-colors duration-500
+          ${active ? 'text-electric-300' : 'text-slate-600'}
+          ${current ? 'text-electric-200' : ''}
+        `}
+      >
+        {label}
+      </span>
     </div>
   );
 }
