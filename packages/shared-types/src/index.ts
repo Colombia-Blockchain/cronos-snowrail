@@ -369,3 +369,347 @@ export type DeepPartial<T> = {
 export type PaymentIntentWithDecision = PaymentIntent & {
   agentDecision?: AgentDecision;
 };
+
+// ============ CHAT TYPES ============
+
+/**
+ * Chat command types
+ */
+export type ChatCommand =
+  | '/pay'
+  | '/deposit'
+  | '/withdraw'
+  | '/mix'
+  | '/bulk'
+  | '/status'
+  | '/wallet'
+  | '/history'
+  | '/help'
+  | '/confirm'
+  | '/cancel';
+
+/**
+ * Chat message from user or system
+ */
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  content: string;
+  command?: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+  sender: 'user' | 'system';
+}
+
+/**
+ * Chat command parameters
+ */
+export interface CommandParams {
+  command: ChatCommand;
+  args: string[];
+  raw: string;
+}
+
+/**
+ * Send message request
+ */
+export interface SendMessageRequest {
+  content: string;
+}
+
+/**
+ * Send message response
+ */
+export interface SendMessageResponse {
+  message: ChatMessage;
+  systemResponse?: ChatMessage;
+}
+
+/**
+ * Get chat history request
+ */
+export interface GetChatHistoryRequest {
+  limit?: number;
+  before?: string; // message ID
+}
+
+/**
+ * Get chat history response
+ */
+export interface GetChatHistoryResponse {
+  messages: ChatMessage[];
+  hasMore: boolean;
+}
+
+// ============ NOTIFICATION TYPES ============
+
+/**
+ * Notification types
+ */
+export enum NotificationType {
+  PAYMENT_RECEIVED = 'payment_received',
+  PAYMENT_SENT = 'payment_sent',
+  DEPOSIT_CONFIRMED = 'deposit_confirmed',
+  WITHDRAWAL_READY = 'withdrawal_ready',
+  INTENT_FUNDED = 'intent_funded',
+  INTENT_EXECUTED = 'intent_executed',
+  BATCH_PROGRESS = 'batch_progress',
+  BATCH_COMPLETE = 'batch_complete',
+  TRANSACTION_PENDING = 'transaction_pending',
+  TRANSACTION_CONFIRMED = 'transaction_confirmed',
+  TRANSACTION_FAILED = 'transaction_failed',
+  PRICE_ALERT = 'price_alert',
+  SECURITY_ALERT = 'security_alert',
+}
+
+/**
+ * Notification priority
+ */
+export type NotificationPriority = 'low' | 'medium' | 'high' | 'critical';
+
+/**
+ * Notification action button
+ */
+export interface NotificationAction {
+  label: string;
+  command: string;
+  style: 'primary' | 'secondary' | 'danger';
+}
+
+/**
+ * Notification model
+ */
+export interface Notification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  icon: string;
+  priority: NotificationPriority;
+  data: Record<string, any>;
+  actions?: NotificationAction[];
+  read: boolean;
+  dismissible: boolean;
+  createdAt: string;
+}
+
+/**
+ * Create notification request
+ */
+export interface CreateNotificationRequest {
+  type: NotificationType;
+  title: string;
+  message: string;
+  icon?: string;
+  priority?: NotificationPriority;
+  data?: Record<string, any>;
+  actions?: NotificationAction[];
+}
+
+/**
+ * Get notifications request
+ */
+export interface GetNotificationsRequest {
+  unreadOnly?: boolean;
+  limit?: number;
+  before?: string; // notification ID
+}
+
+/**
+ * Get notifications response
+ */
+export interface GetNotificationsResponse {
+  notifications: Notification[];
+  unreadCount: number;
+  hasMore: boolean;
+}
+
+/**
+ * Mark notification as read request
+ */
+export interface MarkNotificationReadRequest {
+  notificationId: string;
+}
+
+/**
+ * Mark all notifications as read
+ */
+export interface MarkAllReadRequest {
+  before?: string; // ISO timestamp
+}
+
+// ============ WEBSOCKET TYPES ============
+
+/**
+ * WebSocket event types
+ */
+export enum WSEventType {
+  // Connection events
+  CONNECT = 'connect',
+  DISCONNECT = 'disconnect',
+  AUTH = 'auth',
+  AUTH_SUCCESS = 'auth:success',
+  AUTH_ERROR = 'auth:error',
+
+  // Chat events
+  CHAT_MESSAGE = 'chat:message',
+  CHAT_HISTORY = 'chat:history',
+  CHAT_TYPING = 'chat:typing',
+
+  // Notification events
+  NOTIFICATION = 'notification',
+  NOTIFICATION_READ = 'notification:read',
+  NOTIFICATION_DISMISS = 'notification:dismiss',
+
+  // Intent events
+  INTENT_CREATED = 'intent:created',
+  INTENT_UPDATED = 'intent:updated',
+  INTENT_EXECUTED = 'intent:executed',
+  INTENT_FAILED = 'intent:failed',
+
+  // Transaction events
+  TX_PENDING = 'tx:pending',
+  TX_CONFIRMED = 'tx:confirmed',
+  TX_FAILED = 'tx:failed',
+
+  // Batch events
+  BATCH_CREATED = 'batch:created',
+  BATCH_PROGRESS = 'batch:progress',
+  BATCH_COMPLETE = 'batch:complete',
+
+  // System events
+  ERROR = 'error',
+  PING = 'ping',
+  PONG = 'pong',
+}
+
+/**
+ * WebSocket authentication message
+ */
+export interface WSAuthMessage {
+  type: 'auth';
+  token: string;
+  address: string;
+}
+
+/**
+ * WebSocket message envelope
+ */
+export interface WSMessage<T = any> {
+  event: WSEventType;
+  data: T;
+  timestamp: string;
+}
+
+/**
+ * WebSocket error
+ */
+export interface WSError {
+  code: string;
+  message: string;
+  details?: Record<string, any>;
+}
+
+// ============ BULK PAYMENT TYPES ============
+
+/**
+ * Bulk batch status
+ */
+export type BulkBatchStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+
+/**
+ * Bulk transaction item
+ */
+export interface BulkTransactionItem {
+  recipient: string;
+  amount: string;
+  currency: Currency;
+  reference?: string;
+}
+
+/**
+ * Bulk transaction result
+ */
+export interface BulkTransactionResult {
+  recipient: string;
+  amount: string;
+  currency: Currency;
+  status: 'success' | 'failed' | 'pending';
+  txHash?: string;
+  error?: string;
+}
+
+/**
+ * Bulk batch
+ */
+export interface BulkBatch {
+  id: string;
+  userId: string;
+  status: BulkBatchStatus;
+  totalCount: number;
+  processedCount: number;
+  successCount: number;
+  failedCount: number;
+  totalAmount: string;
+  currency: Currency;
+  transactions: BulkTransactionItem[];
+  results?: BulkTransactionResult[];
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
+/**
+ * Create bulk batch request
+ */
+export interface CreateBulkBatchRequest {
+  transactions: BulkTransactionItem[];
+  currency: Currency;
+}
+
+/**
+ * Create bulk batch response
+ */
+export interface CreateBulkBatchResponse {
+  batch: BulkBatch;
+  preview: {
+    totalCount: number;
+    totalAmount: string;
+    estimatedGas: string;
+    estimatedTime: string;
+  };
+}
+
+/**
+ * Get bulk batch request
+ */
+export interface GetBulkBatchRequest {
+  batchId: string;
+}
+
+/**
+ * Get bulk batch response
+ */
+export interface GetBulkBatchResponse {
+  batch: BulkBatch;
+}
+
+/**
+ * Execute bulk batch request
+ */
+export interface ExecuteBulkBatchRequest {
+  batchId: string;
+}
+
+/**
+ * Bulk batch progress event
+ */
+export interface BulkBatchProgressEvent {
+  batchId: string;
+  processedCount: number;
+  successCount: number;
+  failedCount: number;
+  percentage: number;
+  currentTransaction?: BulkTransactionResult;
+}
