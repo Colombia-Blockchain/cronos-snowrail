@@ -1,0 +1,127 @@
+// Prisma Schema for Cronos Snow Rail Chat Payment System
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - represents wallet addresses and user profiles
+model User {
+  id            String   @id @default(uuid())
+  address       String   @unique // Ethereum address
+  username      String?  // Optional display name
+  avatar        String?  // Optional avatar URL
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  chatMessages  ChatMessage[]
+  notifications Notification[]
+  bulkBatches   BulkBatch[]
+  intents       Intent[]
+  mixerDeposits MixerDeposit[]
+
+  @@index([address])
+}
+
+// Chat message model - stores all chat interactions
+model ChatMessage {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String   @db.Text
+  command   String?  // Extracted command (/pay, /deposit, etc.)
+  metadata  Json?    // Additional data (command params, etc.)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// Notification model - real-time notifications
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String   // NotificationType enum as string
+  title       String
+  message     String   @db.Text
+  icon        String   // emoji or icon identifier
+  priority    String   // low, medium, high, critical
+  data        Json     // Additional notification data
+  actions     Json?    // Array of NotificationAction
+  read        Boolean  @default(false)
+  dismissible Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, read, createdAt])
+  @@index([userId, type])
+}
+
+// Bulk batch model - B2B bulk payment batches
+model BulkBatch {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         String    // pending, processing, completed, failed
+  totalCount     Int
+  processedCount Int       @default(0)
+  successCount   Int       @default(0)
+  failedCount    Int       @default(0)
+  totalAmount    String    // Total amount in wei as string
+  currency       String    // CRO, USDC, USDT, etc.
+  transactions   Json      // Array of transaction details
+  results        Json?     // Results of processed transactions
+  createdAt      DateTime  @default(now())
+  startedAt      DateTime?
+  completedAt    DateTime?
+
+  @@index([userId, status, createdAt])
+}
+
+// Intent model - payment intents (migrated from in-memory)
+model Intent {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount     String    // Amount in wei as string
+  currency   String    // CRO, WCRO, USDC, USDT
+  recipient  String    // Ethereum address
+  condition  Json?     // { type: 'manual' | 'price-below', value: string }
+  status     String    // pending, funded, executed, failed
+  txHash     String?   // Settlement transaction hash
+  deposit    Json?     // Deposit confirmation data
+  metadata   Json?     // Additional metadata
+  createdAt  DateTime  @default(now())
+  fundedAt   DateTime?
+  executedAt DateTime?
+
+  @@index([userId, status, createdAt])
+  @@index([recipient])
+  @@index([status])
+}
+
+// Mixer deposit model - privacy mixer deposits
+model MixerDeposit {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commitment    String    @unique // keccak256(nullifier, secret)
+  nullifierHash String    @unique // keccak256(nullifier, nullifier)
+  leafIndex     Int?      // Position in Merkle tree
+  amount        String    // Fixed denomination (e.g., "100000000000000000" for 0.1 CRO)
+  depositTxHash String?   // Deposit transaction hash
+  withdrawn     Boolean   @default(false)
+  withdrawTxHash String?  // Withdrawal transaction hash
+  createdAt     DateTime  @default(now())
+  withdrawnAt   DateTime?
+
+  @@index([userId, withdrawn])
+  @@index([commitment])
+  @@index([nullifierHash])
+}
