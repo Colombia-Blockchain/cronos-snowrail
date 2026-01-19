@@ -12,6 +12,12 @@ import { initializeWalletService } from './services/wallet-service';
 import { getWalletService } from './services/wallet-service';
 import { initializePriceService } from './services/price-service';
 import { initializeMixerService } from './services/mixer-service';
+import { initializePrismaService } from './services/prisma-service';
+import { initializeWebSocketService } from './services/websocket-service';
+import { initializeChatService } from './services/chat-service';
+import { initializeNotificationService } from './services/notification-service';
+import { chatRoutes } from './api/routes/chat';
+import { notificationRoutes } from './api/routes/notifications';
 import { mcpPlugin } from './mcp';
 import { initializeZKServices, getZKStatus } from './zk';
 
@@ -63,6 +69,11 @@ initializeWalletService(server);
 initializePriceService(server);
 initializeZKServices(server);  // ZK LEGO modules (verification + proofs)
 initializeAgentService(server);
+initializePrismaService(server);  // Database connection
+initializeWebSocketService(server);  // WebSocket server
+initializeChatService(server);  // Chat message handling
+initializeNotificationService(server);  // Notification system
+
 const walletAddress = getWalletService().getAddress();
 server.log.info(`[WalletService] Wallet address: ${walletAddress}`);
 
@@ -75,6 +86,8 @@ initializeMixerService(server).catch((err) => {
 server.register(intentRoutes, { prefix: '/api' });
 server.register(agentRoutes, { prefix: '/api' });
 server.register(mixerRoutes, { prefix: '/api' });
+server.register(chatRoutes, { prefix: '/api' });
+server.register(notificationRoutes, { prefix: '/api' });
 
 // Register MCP plugin for AI assistant integration
 server.register(mcpPlugin);
