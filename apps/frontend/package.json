@@ -13,14 +13,19 @@
     "@rainbow-me/rainbowkit": "^2.2.10",
     "@tanstack/react-query": "^5.90.16",
     "ethers": "^6.11.1",
+    "framer-motion": "^11.15.0",
     "next": "^14.2.35",
+    "papaparse": "^5.4.1",
     "react": "^18",
     "react-dom": "^18",
+    "socket.io-client": "^4.8.1",
     "viem": "^2.43.4",
-    "wagmi": "^2.19.5"
+    "wagmi": "^2.19.5",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/papaparse": "^5.3.15",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
