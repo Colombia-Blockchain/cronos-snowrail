@@ -43,6 +43,13 @@ const statusConfig: Record<IntentStatus, {
     dot: 'bg-red-400',
     label: 'Failed',
   },
+  cancelled: {
+    bg: 'bg-slate-500/10',
+    text: 'text-slate-400',
+    border: 'border-slate-500/20',
+    dot: 'bg-slate-400',
+    label: 'Cancelled',
+  },
 };
 
 const sizeClasses = {
