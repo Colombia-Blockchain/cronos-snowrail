@@ -14,20 +14,7 @@ export function initializePrismaService(server: FastifyInstance): void {
   }
 
   prismaInstance = new PrismaClient({
-    log: [
-      { level: 'warn', emit: 'event' },
-      { level: 'error', emit: 'event' },
-    ],
-  });
-
-  // Log warnings
-  prismaInstance.$on('warn', (e) => {
-    server.log.warn({ prisma: e }, '[Prisma] Warning');
-  });
-
-  // Log errors
-  prismaInstance.$on('error', (e) => {
-    server.log.error({ prisma: e }, '[Prisma] Error');
+    log: ['warn', 'error'],
   });
 
   // Connect to database
