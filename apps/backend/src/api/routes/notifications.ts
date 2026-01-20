@@ -38,13 +38,11 @@ export const notificationRoutes: FastifyPluginAsync = async (server) => {
     } catch (error) {
       server.log.error({ error }, '[NotificationRoutes] Error getting notifications');
 
-      const response: ApiResponse = {
+      return reply.code(500).send({
         status: 'error',
         code: 'INTERNAL_ERROR',
         message: error instanceof Error ? error.message : 'Failed to get notifications',
-      };
-
-      return reply.code(500).send(response);
+      } as ApiResponse<GetNotificationsResponse>);
     }
   });
 
