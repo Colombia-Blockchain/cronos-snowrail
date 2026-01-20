@@ -115,7 +115,12 @@ export function validateCommand(params: CommandParams): { valid: boolean; error?
       return { valid: true };
 
     case '/confirm':
+      return { valid: true };
+
     case '/cancel':
+      if (args.length < 1) {
+        return { valid: false, error: 'Usage: /cancel <intentId>' };
+      }
       return { valid: true };
 
     default:
@@ -148,6 +153,10 @@ Available Commands:
   /mix <amount>
     Deposit to privacy mixer
     Example: /mix 0.1
+
+  /cancel <intentId>
+    Cancel a pending payment intent
+    Example: /cancel 123e4567-e89b-12d3-a456
 
 📊 B2B Commands:
   /bulk upload
@@ -312,6 +321,25 @@ Arguments:
 Examples:
   /history      - Show last 10 transactions
   /history 20   - Show last 20 transactions
+    `.trim(),
+
+    '/cancel': `
+/cancel - Cancel Payment Intent
+━━━━━━━━━━━━━━━━━━━━━━━
+Cancel a pending payment intent that has not been funded yet.
+
+Usage:
+  /cancel <intentId>
+
+Arguments:
+  intentId - The ID of the intent to cancel
+
+Example:
+  /cancel 123e4567-e89b-12d3-a456-426614174000
+
+Note:
+  Only pending (unfunded) intents can be cancelled.
+  Funded or executed intents cannot be cancelled.
     `.trim(),
   };
 
