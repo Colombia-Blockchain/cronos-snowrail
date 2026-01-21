@@ -38,10 +38,20 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/snowrail
 JWT_SECRET=your_jwt_secret_here
 JWT_EXPIRES_IN=7d
 
-# x402 Facilitator
+# x402 Protocol Configuration
+# Set X402_ENABLED=true to enable the x402 payment handshake
+X402_ENABLED=false
+X402_FACILITATOR_URL=http://localhost:3002
+X402_CHALLENGE_RECIPIENT=0x22f6F000609d52A0b0efCD4349222cd9d70716Ba
+X402_CHALLENGE_AMOUNT=1000000
+X402_CHALLENGE_ASSET=USDC
+X402_NETWORK=cronos-testnet
+X402_SCHEME=eip-3009
+X402_TIMEOUT_SECONDS=300
+
+# Legacy facilitator config (deprecated, use X402_* above)
 FACILITATOR_URL=http://localhost:4000/facilitator
 FACILITATOR_PORT=3002
-X402_FACILITATOR_URL=http://localhost:4000/facilitator
 
 # Services
 SERVICE_URL=http://localhost:4000/process
