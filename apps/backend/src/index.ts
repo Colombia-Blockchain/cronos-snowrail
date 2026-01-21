@@ -18,8 +18,10 @@ import { initializeChatService } from './services/chat-service';
 import { initializeNotificationService } from './services/notification-service';
 import { chatRoutes } from './api/routes/chat';
 import { notificationRoutes } from './api/routes/notifications';
+import { premiumRoutes } from './api/routes/premium';
 import { mcpPlugin } from './mcp';
 import { initializeZKServices, getZKStatus } from './zk';
+import { x402Plugin, getX402Config } from './x402/middleware';
 
 dotenv.config({ path: path.join(__dirname, '.env') });
 
@@ -89,6 +91,10 @@ server.register(mixerRoutes, { prefix: '/api' });
 server.register(chatRoutes, { prefix: '/api' });
 server.register(notificationRoutes, { prefix: '/api' });
 
+// Register x402 plugin and premium routes (gated by x402)
+server.register(x402Plugin);
+server.register(premiumRoutes, { prefix: '/api' });
+
 // Register MCP plugin for AI assistant integration
 server.register(mcpPlugin);
 
@@ -154,6 +160,16 @@ server.get<{ Reply: ApiResponse }>('/health/ready', async () => {
           generateNote: 'POST /api/mixer/generate-note',
           deposit: 'POST /api/mixer/deposit',
           withdraw: 'POST /api/mixer/withdraw',
+        },
+      },
+      x402: {
+        enabled: getX402Config().enabled,
+        facilitatorUrl: getX402Config().enabled ? getX402Config().facilitatorUrl : null,
+        scheme: getX402Config().scheme,
+        endpoints: {
+          status: 'GET /api/premium/status',
+          premiumData: 'GET /api/premium/data (requires x402 payment)',
+          premiumAnalytics: 'GET /api/premium/analytics (requires x402 payment)',
         },
       },
     },
